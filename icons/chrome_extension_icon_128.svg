@@ -1,0 +1,24 @@
+<svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+  <!-- 透明内边距已包含在128x128尺寸中 -->
+  
+  <!-- 主图标区域（96x96，居中放置） -->
+  <!-- 背景圆形 -->
+  <circle cx="64" cy="64" r="48" fill="#FB7299"/>
+  <!-- 为深色背景添加微弱的白色光晕 -->
+  <circle cx="64" cy="64" r="48" fill="none" stroke="#FFFFFF" stroke-width="1" opacity="0.5"/>
+  
+  <!-- 装饰元素 -->
+  <circle cx="64" cy="64" r="42" fill="none" stroke="#FFFFFF" stroke-width="3"/>
+  
+  <!-- 播放按钮形状 - 核心功能元素 -->
+  <polygon points="52,44 80,64 52,84" fill="#FFFFFF" stroke="#FFFFFF" stroke-width="1"/>
+  
+  <!-- 弹幕元素 - 表示扩展功能 -->
+  <rect x="30" y="38" width="20" height="10" rx="5" fill="#FFFFFF" opacity="0.8"/>
+  <rect x="82" y="48" width="22" height="10" rx="5" fill="#FFFFFF" opacity="0.7"/>
+  <rect x="35" y="86" width="24" height="10" rx="5" fill="#FFFFFF" opacity="0.9"/>
+  <rect x="78" y="76" width="18" height="10" rx="5" fill="#FFFFFF" opacity="0.8"/>
+  
+  <!-- 波浪线表示数据分析 -->
+  <path d="M35,100 Q45,90 55,95 T75,90 T95,95" fill="none" stroke="#FFFFFF" stroke-width="3"/>
+</svg>

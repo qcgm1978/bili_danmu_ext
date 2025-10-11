@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>哔哩哔哩弹幕分析扩展</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+      line-height: 1.6;
+      color: #333;
+      background-color: #f5f5f5;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    header {
+      text-align: center;
+      padding: 60px 20px;
+      background: linear-gradient(135deg, #00a1d6, #00b5e5);
+      color: white;
+      border-radius: 8px;
+      margin-bottom: 40px;
+    }
+    header h1 {
+      font-size: 36px;
+      margin-bottom: 20px;
+    }
+    header p {
+      font-size: 18px;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    .features {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 30px;
+      margin-bottom: 60px;
+    }
+    .feature-item {
+      background: white;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      transition: transform 0.3s, box-shadow 0.3s;
+    }
+    .feature-item:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 5px 20px rgba(0, 0, 0, 0.15);
+    }
+    .feature-item h3 {
+      font-size: 20px;
+      margin-bottom: 15px;
+      color: #00a1d6;
+    }
+    .installation {
+      background: white;
+      padding: 40px;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      margin-bottom: 60px;
+    }
+    .installation h2 {
+      font-size: 28px;
+      margin-bottom: 20px;
+      color: #333;
+    }
+    .installation ol {
+      padding-left: 20px;
+      margin-bottom: 20px;
+    }
+    .installation li {
+      margin-bottom: 10px;
+      font-size: 16px;
+    }
+    .usage {
+      background: white;
+      padding: 40px;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      margin-bottom: 60px;
+    }
+    .usage h2 {
+      font-size: 28px;
+      margin-bottom: 20px;
+      color: #333;
+    }
+    .usage ol {
+      padding-left: 20px;
+    }
+    .usage li {
+      margin-bottom: 10px;
+      font-size: 16px;
+    }
+    footer {
+      text-align: center;
+      padding: 20px;
+      color: #666;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>哔哩哔哩弹幕分析扩展</h1>
+      <p>一个Chrome浏览器扩展，可以在用户访问哔哩哔哩视频页面时获取该视频的弹幕，进行分类，并通过单词云和情绪图表进行可视化展示。</p>
+    </header>
+    
+    <section class="features">
+      <div class="feature-item">
+        <h3>弹幕获取</h3>
+        <p>自动获取哔哩哔哩视频页面上的弹幕数据，无需手动复制粘贴。</p>
+      </div>
+      <div class="feature-item">
+        <h3>情绪分析</h3>
+        <p>对弹幕内容进行情绪分析，区分正面、负面和中性弹幕。</p>
+      </div>
+      <div class="feature-item">
+        <h3>单词云</h3>
+        <p>生成弹幕内容的单词云，直观展示弹幕中高频出现的词汇。</p>
+      </div>
+      <div class="feature-item">
+        <h3>数据统计</h3>
+        <p>提供弹幕数量、情绪分布等统计数据，帮助了解观众反馈。</p>
+      </div>
+    </section>
+    
+    <section class="installation">
+      <h2>安装方法</h2>
+      <ol>
+        <li>克隆或下载本项目到本地</li>
+        <li>打开Chrome浏览器，输入 <code>chrome://extensions/</code> 进入扩展管理页面</li>
+        <li>开启右上角的「开发者模式」</li>
+        <li>点击「加载已解压的扩展程序」，选择项目文件夹</li>
+        <li>扩展安装完成，会显示在浏览器工具栏中</li>
+      </ol>
+    </section>
+    
+    <section class="usage">
+      <h2>使用方法</h2>
+      <ol>
+        <li>打开任意哔哩哔哩视频页面</li>
+        <li>点击浏览器工具栏中的扩展图标</li>
+        <li>在弹出的菜单中点击「开始分析」按钮</li>
+        <li>页面右侧会显示分析面板，包含单词云、情绪分析和统计数据三个标签页</li>
+      </ol>
+    </section>
+    
+    <footer>
+      <p>&copy; 2023 哔哩哔哩弹幕分析扩展 | 仅供学习和研究使用</p>
+    </footer>
+  </div>
+</body>
+</html>

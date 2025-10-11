@@ -1,0 +1,19 @@
+<svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+  <!-- 背景圆形 -->
+  <circle cx="64" cy="64" r="60" fill="#FB7299"/>
+  <!-- 装饰圆环 -->
+  <circle cx="64" cy="64" r="54" fill="none" stroke="#FFFFFF" stroke-width="4"/>
+  <circle cx="64" cy="64" r="40" fill="none" stroke="#FFFFFF" stroke-width="2"/>
+  <!-- 播放按钮形状 -->
+  <polygon points="52,44 80,64 52,84" fill="#FFFFFF"/>
+  <!-- 弹幕元素1 -->
+  <rect x="30" y="38" width="20" height="10" rx="5" fill="#FFFFFF" opacity="0.8"/>
+  <!-- 弹幕元素2 -->
+  <rect x="82" y="48" width="22" height="10" rx="5" fill="#FFFFFF" opacity="0.7"/>
+  <!-- 弹幕元素3 -->
+  <rect x="35" y="86" width="24" height="10" rx="5" fill="#FFFFFF" opacity="0.9"/>
+  <!-- 弹幕元素4 -->
+  <rect x="78" y="76" width="18" height="10" rx="5" fill="#FFFFFF" opacity="0.8"/>
+  <!-- 波浪线表示数据分析 -->
+  <path d="M35,100 Q45,90 55,95 T75,90 T95,95" fill="none" stroke="#FFFFFF" stroke-width="3"/>
+</svg>

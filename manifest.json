@@ -1,0 +1,49 @@
+{
+  "manifest_version": 3,
+  "name": "哔哩哔哩弹幕分析",
+  "version": "1.0",
+  "description": "分析哔哩哔哩视频弹幕，生成单词云与情绪可视化，帮助了解观众反馈。",
+  "privacy_policy": "https://github.com/yourusername/bili_danmu_ext/blob/main/privacy_policy.md",
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "storage"
+  ],
+  "host_permissions": [
+    "https://*.bilibili.com/*",
+    "https://api.openai.com/*",
+    "https://api.groq.com/*",
+    "https://api.moonshot.cn/*",
+    "https://api.anthropic.com/*"
+  ],
+  "action": {
+    "default_icon": {
+      "16": "icons/icon16.svg",
+      "48": "icons/icon48.svg",
+      "128": "icons/icon128.svg"
+    },
+    "default_title": "弹幕分析",
+    "default_popup": "popup.html"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://www.bilibili.com/video/*"],
+      "js": ["content.js"],
+      "css": ["styles.css"]
+    }
+  ],
+  "icons": {
+    "16": "icons/icon16.svg",
+    "48": "icons/icon48.svg",
+    "128": "icons/chrome_extension_icon_128.png"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["popup.html", "lib/chart.umd.min.js", "lib/wordcloud.min.js"],
+      "matches": ["https://www.bilibili.com/*"]
+    }
+  ]
+}
