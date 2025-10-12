@@ -3,7 +3,7 @@
   "name": "哔哩哔哩弹幕分析",
   "version": "1.0",
   "description": "分析哔哩哔哩视频弹幕，生成单词云与情绪可视化，帮助了解观众反馈。",
-  "privacy_policy": "https://github.com/yourusername/bili_danmu_ext/blob/main/privacy_policy.md",
+  "privacy_policy": "https://github.com/dickphilipp/bili_danmu_ext/blob/main/privacy_policy.md",
   "permissions": [
     "activeTab",
     "scripting",

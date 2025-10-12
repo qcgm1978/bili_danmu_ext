@@ -1,4 +1,48 @@
 // 加载必要的库
+// 从后台脚本获取语言设置
+function getLanguage() {
+  return new Promise((resolve) => {
+    chrome.storage.local.get(['language'], (result) => {
+      resolve(result.language || 'zh-CN');
+    });
+  });
+}
+
+// 定义多语言文本对象
+const translations = {
+  'zh-CN': {
+    analysisPanelTitle: '弹幕分析',
+    wordCloud: '单词云',
+    sentimentAnalysis: '情绪分析',
+    statistics: '统计数据',
+    totalDanmu: '总弹幕数',
+    positiveDanmu: '正面弹幕',
+    negativeDanmu: '负面弹幕',
+    neutralDanmu: '中性弹幕',
+    positive: '正面',
+    negative: '负面',
+    neutral: '中性'
+  },
+  'en-US': {
+    analysisPanelTitle: 'Danmu Analysis',
+    wordCloud: 'Word Cloud',
+    sentimentAnalysis: 'Sentiment Analysis',
+    statistics: 'Statistics',
+    totalDanmu: 'Total Danmu',
+    positiveDanmu: 'Positive Danmu',
+    negativeDanmu: 'Negative Danmu',
+    neutralDanmu: 'Neutral Danmu',
+    positive: 'Positive',
+    negative: 'Negative',
+    neutral: 'Neutral'
+  }
+};
+
+// 获取对应语言的文本
+function getText(key, language) {
+  return translations[language]?.[key] || translations['zh-CN'][key] || key;
+}
+
 function loadScript(url, callback) {
   const script = document.createElement('script');
   script.src = url;
@@ -56,74 +100,78 @@ function createAnalysisPanel() {
     analysisPanel.remove();
   }
 
-  analysisPanel = document.createElement('div');
-  analysisPanel.id = 'bili-danmu-analysis-panel';
-  analysisPanel.innerHTML = `
-    <div class="analysis-header">
-      <h3>弹幕分析</h3>
-      <button class="close-btn">×</button>
-    </div>
-    <div class="analysis-content">
-      <div class="analysis-tab">
-        <button class="tab-btn active" data-tab="wordcloud">单词云</button>
-        <button class="tab-btn" data-tab="sentiment">情绪分析</button>
-        <button class="tab-btn" data-tab="stats">统计数据</button>
+  getLanguage().then(language => {
+    analysisPanel = document.createElement('div');
+    analysisPanel.id = 'bili-danmu-analysis-panel';
+    analysisPanel.setAttribute('data-language', language);
+    
+    analysisPanel.innerHTML = `
+      <div class="analysis-header">
+        <h3>${getText('analysisPanelTitle', language)}</h3>
+        <button class="close-btn">×</button>
       </div>
-      <div class="tab-content active" id="wordcloud-content">
-        <canvas id="wordcloud-canvas" width="400" height="300"></canvas>
-      </div>
-      <div class="tab-content" id="sentiment-content">
-        <canvas id="sentiment-chart" width="400" height="300"></canvas>
-      </div>
-      <div class="tab-content" id="stats-content">
-        <div class="stats-grid">
-          <div class="stat-item">
-            <span class="stat-label">总弹幕数</span>
-            <span class="stat-value" id="total-danmu">0</span>
-          </div>
-          <div class="stat-item">
-            <span class="stat-label">正面弹幕</span>
-            <span class="stat-value" id="positive-danmu">0</span>
-          </div>
-          <div class="stat-item">
-            <span class="stat-label">负面弹幕</span>
-            <span class="stat-value" id="negative-danmu">0</span>
-          </div>
-          <div class="stat-item">
-            <span class="stat-label">中性弹幕</span>
-            <span class="stat-value" id="neutral-danmu">0</span>
+      <div class="analysis-content">
+        <div class="analysis-tab">
+          <button class="tab-btn active" data-tab="wordcloud">${getText('wordCloud', language)}</button>
+          <button class="tab-btn" data-tab="sentiment">${getText('sentimentAnalysis', language)}</button>
+          <button class="tab-btn" data-tab="stats">${getText('statistics', language)}</button>
+        </div>
+        <div class="tab-content active" id="wordcloud-content">
+          <canvas id="wordcloud-canvas" width="400" height="300"></canvas>
+        </div>
+        <div class="tab-content" id="sentiment-content">
+          <canvas id="sentiment-chart" width="400" height="300"></canvas>
+        </div>
+        <div class="tab-content" id="stats-content">
+          <div class="stats-grid">
+            <div class="stat-item">
+              <span class="stat-label">${getText('totalDanmu', language)}</span>
+              <span class="stat-value" id="total-danmu">0</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">${getText('positiveDanmu', language)}</span>
+              <span class="stat-value" id="positive-danmu">0</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">${getText('negativeDanmu', language)}</span>
+              <span class="stat-value" id="negative-danmu">0</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">${getText('neutralDanmu', language)}</span>
+              <span class="stat-value" id="neutral-danmu">0</span>
+            </div>
           </div>
         </div>
       </div>
-    </div>
-  `;
+    `;
 
   document.body.appendChild(analysisPanel);
 
-  // 添加关闭按钮事件
-  const closeBtn = analysisPanel.querySelector('.close-btn');
-  closeBtn.addEventListener('click', () => {
-    analysisPanel.remove();
-    analysisPanel = null;
-  });
+    // 添加关闭按钮事件
+    const closeBtn = analysisPanel.querySelector('.close-btn');
+    closeBtn.addEventListener('click', () => {
+      analysisPanel.remove();
+      analysisPanel = null;
+    });
 
-  // 添加标签页切换事件
-  const tabBtns = analysisPanel.querySelectorAll('.tab-btn');
-  tabBtns.forEach(btn => {
-    btn.addEventListener('click', () => {
-      const tabId = btn.getAttribute('data-tab');
-      
-      // 更新按钮状态
-      tabBtns.forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      
-      // 更新内容显示
-      const tabContents = analysisPanel.querySelectorAll('.tab-content');
-      tabContents.forEach(content => {
-        content.classList.remove('active');
-        if (content.id === `${tabId}-content`) {
-          content.classList.add('active');
-        }
+    // 添加标签页切换事件
+    const tabBtns = analysisPanel.querySelectorAll('.tab-btn');
+    tabBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const tabId = btn.getAttribute('data-tab');
+        
+        // 更新按钮状态
+        tabBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        
+        // 更新内容显示
+        const tabContents = analysisPanel.querySelectorAll('.tab-content');
+        tabContents.forEach(content => {
+          content.classList.remove('active');
+          if (content.id === `${tabId}-content`) {
+            content.classList.add('active');
+          }
+        });
       });
     });
   });
@@ -248,13 +296,19 @@ function analyzeDanmuWithLLM(danmuList, callback) {
         responseText = data.choices[0]?.message?.content || '';
       }
       
-      // 解析情绪结果
+      // 获取当前语言设置
+      return Promise.all([responseText, getLanguage()]);
+    }).then(([responseText, language]) => {      // 解析情绪结果
       const classifiedDanmu = {
         allDanmu: danmuList,
         positiveDanmu: [],
         negativeDanmu: [],
         neutralDanmu: []
       };
+      
+      // 根据当前语言获取情绪关键词
+      const positiveKeyword = getText('positive', language);
+      const negativeKeyword = getText('negative', language);
       
       // 简单的结果解析逻辑
       if (responseText) {
@@ -265,9 +319,9 @@ function analyzeDanmuWithLLM(danmuList, callback) {
             const danmu = parts[0].trim();
             const sentiment = parts[1].trim().toLowerCase();
             
-            if (sentiment.includes('正面')) {
+            if (sentiment.includes(positiveKeyword.toLowerCase())) {
               classifiedDanmu.positiveDanmu.push(danmu);
-            } else if (sentiment.includes('负面')) {
+            } else if (sentiment.includes(negativeKeyword.toLowerCase())) {
               classifiedDanmu.negativeDanmu.push(danmu);
             } else {
               classifiedDanmu.neutralDanmu.push(danmu);

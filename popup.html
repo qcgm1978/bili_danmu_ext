@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>哔哩哔哩弹幕分析</title>
+  <script type="module" src="lang.js"></script>
   <style>
     body {
       width: 300px;
@@ -134,14 +135,14 @@
   </style>
 </head>
 <body>
-  <h1>哔哩哔哩弹幕分析</h1>
-  <p>在哔哩哔哩视频页面点击扩展图标，即可分析该视频的弹幕内容，生成单词云和情绪可视化。</p>
-  <button id="openAnalysisBtn">开始分析</button>
+  <h1 data-i18n="extensionName">哔哩哔哩弹幕分析</h1>
+  <p data-i18n="extensionDesc">在哔哩哔哩视频页面点击扩展图标，即可分析该视频的弹幕内容，生成单词云和情绪可视化。</p>
+  <button id="openAnalysisBtn" data-i18n="startAnalysis">开始分析</button>
   
-  <h2>高级设置</h2>
+  <h2 data-i18n="advancedSettings">高级设置</h2>
   <div class="setting-group">
     <div class="switch-container">
-      <span class="setting-label">启用LLM情绪分析</span>
+      <span class="setting-label" data-i18n="useLLM">启用LLM情绪分析</span>
       <label class="switch">
         <input type="checkbox" id="useLLM">
         <span class="slider"></span>
@@ -149,32 +150,42 @@
     </div>
     
     <div id="llmSettings" style="display: none;">
-      <label class="setting-label">选择LLM提供商</label>
+      <label class="setting-label" data-i18n="selectLLMProvider">选择LLM提供商</label>
       <select id="llmProvider">
         <option value="openai">OpenAI (GPT)</option>
         <option value="groq">Groq (Llama)</option>
-        <option value="moonshot">Moonshot (月之暗面)</option>
+        <option value="moonshot">Moonshot (moonshot-v1)</option>
         <option value="anthropic">Anthropic (Claude)</option>
       </select>
       
-      <label class="setting-label">API密钥</label>
+      <label class="setting-label" data-i18n="apiKey">API密钥</label>
       <input type="text" id="llmApiKey" placeholder="请输入您的API密钥">
       
-      <button id="saveSettingsBtn">保存设置</button>
-      <div id="saveStatus" class="save-status">设置已保存</div>
+      <button id="saveSettingsBtn" data-i18n="saveSettings">保存设置</button>
+      <div id="saveStatus" class="save-status" data-i18n="settingsSaved">设置已保存</div>
+    </div>
+  </div>
+  
+  <div class="setting-group">
+    <div class="switch-container">
+      <label class="setting-label" data-i18n="selectLanguage">选择语言</label>
+      <select id="languageSelect">
+        <option value="zh-CN">中文</option>
+        <option value="en-US">English</option>
+      </select>
     </div>
   </div>
   
   <div class="tips">
-    <p><strong>使用说明：</strong></p>
-    <p>1. 打开哔哩哔哩视频页面</p>
-    <p>2. 点击此扩展图标</p>
-    <p>3. 查看弹幕分析结果</p>
-    <p><strong>LLM分析说明：</strong></p>
-    <p>启用后将使用AI模型进行更准确的情绪分析，需要配置对应平台的API密钥。</p>
+    <p><strong data-i18n="usageInstructions">使用说明：</strong></p>
+    <p data-i18n="instructionStep1">1. 打开哔哩哔哩视频页面</p>
+    <p data-i18n="instructionStep2">2. 点击此扩展图标</p>
+    <p data-i18n="instructionStep3">3. 查看弹幕分析结果</p>
+    <p><strong data-i18n="llmAnalysisDesc">LLM分析说明：</strong></p>
+    <p data-i18n="llmAnalysisNote">启用后将使用AI模型进行更准确的情绪分析，需要配置对应平台的API密钥。</p>
   </div>
-  <div class="version">版本 1.0</div>
+  <div class="version" data-i18n="version">版本 1.0</div>
   
-  <script src="popup.js"></script>
+  <script type="module" src="popup.js"></script>
 </body>
 </html>
