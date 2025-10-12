@@ -30,15 +30,25 @@ document.addEventListener('DOMContentLoaded', () => {
       useLLM: useLLM,
       llmProvider: llmProvider,
       llmApiKey: llmApiKey
-    }, (response) => {
-      if (response && response.success) {
-        const saveStatus = document.getElementById('saveStatus');
-        saveStatus.style.opacity = '1';
-        setTimeout(() => {
-          saveStatus.style.opacity = '0';
-        }, 2000);
-      }
     });
+    
+    // 显示保存成功提示
+    const saveMessage = document.createElement('div');
+    saveMessage.textContent = '设置已保存';
+    saveMessage.style.position = 'fixed';
+    saveMessage.style.bottom = '20px';
+    saveMessage.style.right = '20px';
+    saveMessage.style.backgroundColor = '#4CAF50';
+    saveMessage.style.color = 'white';
+    saveMessage.style.padding = '10px';
+    saveMessage.style.borderRadius = '5px';
+    saveMessage.style.zIndex = '1000';
+    document.body.appendChild(saveMessage);
+    
+    // 3秒后移除提示
+    setTimeout(() => {
+      saveMessage.remove();
+    }, 3000);
   });
   
   // 开始分析按钮事件
@@ -46,7 +56,14 @@ document.addEventListener('DOMContentLoaded', () => {
     chrome.tabs.query({ active: true, currentWindow: true }, function(tabs) {
       const activeTab = tabs[0];
       if (activeTab.url.includes('bilibili.com/video/')) {
-        chrome.tabs.sendMessage(activeTab.id, { action: 'showAnalysisPanel' });
+        // 确保content.js已加载，强制重新执行content.js
+        chrome.scripting.executeScript({
+          target: { tabId: activeTab.id },
+          files: ['content.js']
+        }, () => {
+          // 执行脚本后发送消息
+          chrome.tabs.sendMessage(activeTab.id, { action: 'showAnalysisPanel' });
+        });
       } else {
         alert('请先打开哔哩哔哩视频页面');
       }

@@ -45,6 +45,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 });
 
+// 监听存储变化，确保获取最新设置
+chrome.storage.onChanged.addListener(function(changes, namespace) {
+  // 当设置变化时不需要立即执行任何操作，但确保下次分析时会获取最新设置
+});
+
 // 创建分析面板
 function createAnalysisPanel() {
   if (analysisPanel) {
@@ -313,7 +318,7 @@ function startDanmuAnalysis() {
   }, 1000);
 }
 
-// 修改fetchDanmuFromAPI函数，支持LLM分析
+// 修改fetchDanmuFromAPI函数，先去重后加权处理
 function fetchDanmuFromAPI() {
   const videoId = getVideoId();
   if (!videoId) return;
@@ -433,19 +438,35 @@ function updateStats(classifiedDanmu) {
 function generateWordCloud(danmuList, danmuFrequency) {
   if (!analysisPanel) return;
   
-  const canvas = document.getElementById('wordcloud-canvas');
+  let canvas = document.getElementById('wordcloud-canvas');
   
   // 清空画布
   const ctx = canvas.getContext('2d');
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   
+  // 保存单词数据和频率，用于放大显示
+  let savedWords = [];
+  let savedWordFrequency = {};
+  
+  // 移除之前的点击事件监听器，避免重复添加
+  const newCanvas = canvas.cloneNode(true);
+  canvas.parentNode.replaceChild(newCanvas, canvas);
+  canvas = newCanvas;
+  
   // 使用传入的弹幕频率信息或重新计算
   let wordFrequency = {};
   
+  // 无论是否传入danmuFrequency，都进行单词拆分和统计
   if (danmuFrequency instanceof Map) {
-    // 从Map转换为对象
-    danmuFrequency.forEach((value, key) => {
-      wordFrequency[key] = value;
+    // 将每个弹幕句子拆分为单词并统计频率
+    danmuFrequency.forEach((frequency, danmu) => {
+      const words = danmu.split(/[\s,，。！？；;.!?]+/);
+      words.forEach(word => {
+        if (word.length > 1) {
+          // 单词频率乘以弹幕出现次数
+          wordFrequency[word] = (wordFrequency[word] || 0) + frequency;
+        }
+      });
     });
   } else {
     // 简单的单词频率统计
@@ -464,6 +485,10 @@ function generateWordCloud(danmuList, danmuFrequency) {
     .map(([text, value]) => [text, value])
     .sort((a, b) => b[1] - a[1])
     .slice(0, 50);
+  
+  // 保存单词数据，用于放大显示
+  savedWords = words;
+  savedWordFrequency = wordFrequency;
   
   // 使用wordcloud库生成单词云
   if (window.wordcloud && words.length > 0) {
@@ -492,6 +517,79 @@ function generateWordCloud(danmuList, danmuFrequency) {
     // 如果库未加载，使用简单的备选方法
     drawSimpleWordCloud(canvas, words);
   }
+  
+  // 添加点击单词云放大功能
+  canvas.addEventListener('click', function() {
+    // 创建放大后的弹窗
+    const overlay = document.createElement('div');
+    overlay.style.position = 'fixed';
+    overlay.style.top = '0';
+    overlay.style.left = '0';
+    overlay.style.width = '100%';
+    overlay.style.height = '100%';
+    overlay.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+    overlay.style.zIndex = '9999';
+    overlay.style.display = 'flex';
+    overlay.style.justifyContent = 'center';
+    overlay.style.alignItems = 'center';
+    overlay.style.cursor = 'pointer';
+    
+    // 创建放大后的画布容器
+    const container = document.createElement('div');
+    container.style.backgroundColor = 'white';
+    container.style.padding = '20px';
+    container.style.borderRadius = '8px';
+    container.style.maxWidth = '80%';
+    container.style.maxHeight = '80%';
+    
+    // 创建放大后的画布
+    const largeCanvas = document.createElement('canvas');
+    largeCanvas.width = 800;
+    largeCanvas.height = 600;
+    largeCanvas.style.maxWidth = '100%';
+    largeCanvas.style.maxHeight = '100%';
+    container.appendChild(largeCanvas);
+    overlay.appendChild(container);
+    
+    document.body.appendChild(overlay);
+    
+    // 绘制放大的单词云
+    if (window.wordcloud && savedWords.length > 0) {
+      try {
+        window.wordcloud(largeCanvas, {
+          list: savedWords,
+          gridSize: 20,
+          weightFactor: 20,
+          fontFamily: 'Arial, sans-serif',
+          color: function(word, weight, fontSize, distance, theta) {
+            return 'hsl(' + Math.random() * 360 + ', 70%, 50%)';
+          },
+          rotateRatio: 0.5,
+          rotationSteps: 2,
+          backgroundColor: 'transparent',
+          drawOutOfBound: false,
+          shrinkToFit: true,
+          shape: 'circle',
+          ellipticity: 0.65
+        });
+      } catch (error) {
+        // 如果wordcloud库加载失败，使用简单的备选方法
+        const ctx = largeCanvas.getContext('2d');
+        drawSimpleWordCloud(largeCanvas, savedWords);
+      }
+    } else if (savedWords.length > 0) {
+      // 如果库未加载，使用简单的备选方法
+      const ctx = largeCanvas.getContext('2d');
+      drawSimpleWordCloud(largeCanvas, savedWords);
+    }
+    
+    // 点击空白处关闭放大视图
+    overlay.addEventListener('click', function(e) {
+      if (e.target === overlay) {
+        document.body.removeChild(overlay);
+      }
+    });
+  });
 }
 
 // 简单的单词云绘制方法（备选方案）
@@ -550,24 +648,49 @@ function generateSentimentChart(classifiedDanmu) {
         type: 'pie',
         data: {
           labels: ['正面', '负面', '中性'],
-          datasets: [{
-            data: [positiveCount, negativeCount, neutralCount],
-            backgroundColor: ['#4CAF50', '#F44336', '#9E9E9E'],
-            borderWidth: 1,
-            borderColor: '#fff'
-          }]
+          datasets: [
+            // 主数据集 - 3D效果的顶部
+            {
+              data: [positiveCount, negativeCount, neutralCount],
+              backgroundColor: ['#4CAF50', '#F44336', '#9E9E9E'],
+              borderWidth: 2,
+              borderColor: '#fff',
+              hoverOffset: 15
+            },
+            // 底部数据集 - 用于创建3D效果的底座
+            {
+              data: [positiveCount, negativeCount, neutralCount],
+              backgroundColor: ['rgba(76, 175, 80, 0.3)', 'rgba(244, 67, 54, 0.3)', 'rgba(158, 158, 158, 0.3)'],
+              borderWidth: 0,
+              // 将底部数据集稍微偏移，创造3D效果
+              circumference: 1 * Math.PI,
+              rotation: 1.5 * Math.PI
+            }
+          ]
         },
         options: {
           responsive: true,
           maintainAspectRatio: false,
+          animation: {
+            animateRotate: true,
+            animateScale: true,
+            duration: 1000,
+            easing: 'easeOutQuart'
+          },
           plugins: {
             legend: {
               position: 'right',
               labels: {
+                color: '#333',
                 font: {
                   family: 'Arial',
-                  size: 12
-                }
+                  size: 14,
+                  weight: 'bold'
+                },
+                padding: 20,
+                usePointStyle: true,
+                pointStyle: 'circle',
+                pointRadius: 6
               }
             },
             tooltip: {
@@ -609,6 +732,44 @@ function drawSimpleSentimentChart(canvas, positiveCount, negativeCount, neutralC
   if (total > 0) {
     let startAngle = 0;
     
+    // 绘制3D效果的阴影层
+    ctx.save();
+    ctx.translate(5, 5);
+    // 绘制正面弹幕阴影部分
+    if (positiveCount > 0) {
+      const endAngle = startAngle + (positiveCount / total) * Math.PI * 2;
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, radius, startAngle, endAngle);
+      ctx.lineTo(centerX, centerY);
+      ctx.fill();
+      startAngle = endAngle;
+    }
+    
+    // 绘制负面弹幕阴影部分
+    if (negativeCount > 0) {
+      const endAngle = startAngle + (negativeCount / total) * Math.PI * 2;
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, radius, startAngle, endAngle);
+      ctx.lineTo(centerX, centerY);
+      ctx.fill();
+      startAngle = endAngle;
+    }
+    
+    // 绘制中性弹幕阴影部分
+    if (neutralCount > 0) {
+      const endAngle = startAngle + (neutralCount / total) * Math.PI * 2;
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, radius, startAngle, endAngle);
+      ctx.lineTo(centerX, centerY);
+      ctx.fill();
+    }
+    ctx.restore();
+    
+    startAngle = 0;
+    
     // 绘制正面弹幕部分
     if (positiveCount > 0) {
       const endAngle = startAngle + (positiveCount / total) * Math.PI * 2;
@@ -641,12 +802,32 @@ function drawSimpleSentimentChart(canvas, positiveCount, negativeCount, neutralC
       ctx.fill();
     }
     
-    // 添加图例
+    // 添加带颜色的图例
+    ctx.font = 'bold 14px Arial';
+    
+    // 正面图例
+    ctx.fillStyle = '#4CAF50';
+    ctx.beginPath();
+    ctx.arc(15, 25, 8, 0, Math.PI * 2);
+    ctx.fill();
     ctx.fillStyle = '#333';
-    ctx.font = '14px Arial';
-    ctx.fillText('正面: ' + positiveCount, 20, 30);
-    ctx.fillText('负面: ' + negativeCount, 20, 55);
-    ctx.fillText('中性: ' + neutralCount, 20, 80);
+    ctx.fillText('正面: ' + positiveCount, 35, 30);
+    
+    // 负面图例
+    ctx.fillStyle = '#F44336';
+    ctx.beginPath();
+    ctx.arc(15, 50, 8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#333';
+    ctx.fillText('负面: ' + negativeCount, 35, 55);
+    
+    // 中性图例
+    ctx.fillStyle = '#9E9E9E';
+    ctx.beginPath();
+    ctx.arc(15, 75, 8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#333';
+    ctx.fillText('中性: ' + neutralCount, 35, 80);
   }
 }
 
