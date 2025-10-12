@@ -361,7 +361,7 @@ function fetchDanmuFromAPI() {
               }
             }
             
-            // 获取去重后的弹幕列表（用于分析）
+            // 获取去重后的弹幕列表（用于发送给LLM分析，减少API调用成本）
             const uniqueDanmuList = Array.from(danmuFrequency.keys());
             
             if (uniqueDanmuList.length > 0) {
@@ -371,9 +371,41 @@ function fetchDanmuFromAPI() {
                 classifiedDanmu.originalCount = originalDanmuList.length;
                 classifiedDanmu.danmuFrequency = danmuFrequency;
                 
-                updateStats(classifiedDanmu);
+                // 根据弹幕频率调整情绪分析结果，确保统计数据考虑重复弹幕
+                const weightedClassifiedDanmu = {
+                  allDanmu: classifiedDanmu.allDanmu,
+                  originalCount: classifiedDanmu.originalCount,
+                  danmuFrequency: classifiedDanmu.danmuFrequency,
+                  positiveDanmu: [],
+                  negativeDanmu: [],
+                  neutralDanmu: []
+                };
+                
+                // 根据弹幕频率重新计算情绪分类
+                classifiedDanmu.positiveDanmu.forEach(danmu => {
+                  const frequency = danmuFrequency.get(danmu);
+                  for (let i = 0; i < frequency; i++) {
+                    weightedClassifiedDanmu.positiveDanmu.push(danmu);
+                  }
+                });
+                
+                classifiedDanmu.negativeDanmu.forEach(danmu => {
+                  const frequency = danmuFrequency.get(danmu);
+                  for (let i = 0; i < frequency; i++) {
+                    weightedClassifiedDanmu.negativeDanmu.push(danmu);
+                  }
+                });
+                
+                classifiedDanmu.neutralDanmu.forEach(danmu => {
+                  const frequency = danmuFrequency.get(danmu);
+                  for (let i = 0; i < frequency; i++) {
+                    weightedClassifiedDanmu.neutralDanmu.push(danmu);
+                  }
+                });
+                
+                updateStats(weightedClassifiedDanmu);
                 generateWordCloud(classifiedDanmu.allDanmu, danmuFrequency);
-                generateSentimentChart(classifiedDanmu);
+                generateSentimentChart(weightedClassifiedDanmu);
               });
             }
           });

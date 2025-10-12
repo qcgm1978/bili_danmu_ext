@@ -5,7 +5,7 @@
   "main": "background.js",
   "scripts": {
     "dev": "echo 'Dev mode'",
-    "build": "echo 'Build completed'"
+    "build": "zip -r bili_danmu_ext.zip manifest.json content.js background.js icons/ privacy_policy.md publish_guide.md public_key_guide.md privacy_policy_setup_guide.md contact_email_setup_guide.md"
   },
   "dependencies": {
     "wordcloud": "^1.2.2",
