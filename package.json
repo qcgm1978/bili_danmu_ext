@@ -4,12 +4,28 @@
   "description": "哔哩哔哩弹幕分析扩展",
   "main": "background.js",
   "scripts": {
-    "dev": "echo 'Dev mode'",
-    "build": "zip -r bili_danmu_ext.zip manifest.json content.js background.js icons/ privacy_policy.md publish_guide.md public_key_guide.md privacy_policy_setup_guide.md contact_email_setup_guide.md"
+    "dev": "webpack --watch",
+    "build": "webpack && cd dist && zip -r ../bili_danmu_ext.zip .",
+    "sync": "cnpm sync llm-service-provider",
+    "update": "cnpm update llm-service-provider"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.24.0",
+    "@babel/preset-env": "^7.24.0",
+    "@babel/preset-react": "^7.24.0",
+    "babel-loader": "^9.1.0",
+    "copy-webpack-plugin": "^12.0.0",
+    "css-loader": "^6.10.0",
+    "style-loader": "^3.3.0",
+    "webpack": "^5.90.0",
+    "webpack-cli": "^5.1.0"
   },
   "dependencies": {
     "wordcloud": "^1.2.2",
-    "chart.js": "^4.4.8"
+    "chart.js": "^4.4.8",
+    "llm-service-provider":"latest",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
   },
   "keywords": ["chrome-extension", "bilibili", "danmu"],
   "author": "",

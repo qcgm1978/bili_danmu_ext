@@ -1,191 +1,202 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>哔哩哔哩弹幕分析</title>
-  <script type="module" src="lang.js"></script>
-  <style>
-    body {
-      width: 300px;
-      padding: 16px;
-      margin: 0;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-      color: #333;
-    }
-    h1 {
-      font-size: 18px;
-      margin: 0 0 16px 0;
-      text-align: center;
-    }
-    h2 {
-      font-size: 16px;
-      margin: 20px 0 12px 0;
-      text-align: left;
-      border-bottom: 1px solid #eee;
-      padding-bottom: 4px;
-    }
-    p {
-      font-size: 14px;
-      margin: 0 0 12px 0;
-      color: #666;
-    }
-    button {
-      width: 100%;
-      padding: 10px;
-      background: #00a1d6;
-      color: white;
-      border: none;
-      border-radius: 6px;
-      font-size: 14px;
-      cursor: pointer;
-      transition: background-color 0.2s;
-      margin-top: 8px;
-    }
-    button:hover {
-      background: #0086b3;
-    }
-    .tips {
-      margin-top: 16px;
-      padding: 12px;
-      background: #f8f9fa;
-      border-radius: 6px;
-      font-size: 12px;
-      color: #666;
-    }
-    .version {
-      text-align: center;
-      font-size: 12px;
-      color: #999;
-      margin-top: 16px;
-    }
-    .setting-group {
-      margin-bottom: 16px;
-    }
-    .setting-label {
-      display: block;
-      margin-bottom: 6px;
-      font-size: 14px;
-      font-weight: 500;
-    }
-    input[type="text"], select {
-      width: 100%;
-      padding: 8px;
-      border: 1px solid #ddd;
-      border-radius: 4px;
-      font-size: 14px;
-      box-sizing: border-box;
-    }
-    .switch {
-      position: relative;
-      display: inline-block;
-      width: 48px;
-      height: 24px;
-    }
-    .switch input {
-      opacity: 0;
-      width: 0;
-      height: 0;
-    }
-    .slider {
-      position: absolute;
-      cursor: pointer;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background-color: #ccc;
-      transition: .4s;
-      border-radius: 24px;
-    }
-    .slider:before {
-      position: absolute;
-      content: "";
-      height: 18px;
-      width: 18px;
-      left: 3px;
-      bottom: 3px;
-      background-color: white;
-      transition: .4s;
-      border-radius: 50%;
-    }
-    input:checked + .slider {
-      background-color: #00a1d6;
-    }
-    input:focus + .slider {
-      box-shadow: 0 0 1px #00a1d6;
-    }
-    input:checked + .slider:before {
-      transform: translateX(24px);
-    }
-    .switch-container {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 12px;
-    }
-    .save-status {
-      text-align: center;
-      color: #28a745;
-      font-size: 12px;
-      margin-top: 8px;
-      opacity: 0;
-      transition: opacity 0.3s;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>哔哩哔哩弹幕分析</title>
+    <script type="module" src="lang.js"></script>
+    <style>
+        body {
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            width: 350px;
+            padding: 15px;
+            margin: 0;
+            background-color: #f5f5f5;
+        }
+        h1 {
+            color: #FB7299;
+            font-size: 18px;
+            margin-top: 0;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        h2 {
+            color: #FB7299;
+            font-size: 16px;
+            margin-top: 20px;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #e0e0e0;
+            padding-bottom: 5px;
+        }
+        .setting-group {
+            background: white;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .switch-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .setting-label {
+            font-size: 14px;
+            color: #333;
+            display: block;
+            margin-bottom: 8px;
+        }
+        select, input[type="text"] {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        button {
+            background-color: #FB7299;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            width: 100%;
+            margin-bottom: 10px;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #e8648a;
+        }
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 24px;
+        }
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 24px;
+        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        input:checked + .slider {
+            background-color: #FB7299;
+        }
+        input:focus + .slider {
+            box-shadow: 0 0 1px #FB7299;
+        }
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
+        .tips {
+            background-color: #fff9e6;
+            border-left: 4px solid #ffcc00;
+            padding: 10px;
+            margin-top: 15px;
+            font-size: 12px;
+            color: #666;
+            border-radius: 0 4px 4px 0;
+        }
+        .tips strong {
+            color: #FB7299;
+            font-size: 13px;
+        }
+        .tips p {
+            margin: 5px 0;
+        }
+        .version {
+            text-align: center;
+            margin-top: 15px;
+            font-size: 11px;
+            color: #999;
+        }
+        .save-status {
+            background-color: #4CAF50;
+            color: white;
+            padding: 8px;
+            border-radius: 4px;
+            text-align: center;
+            margin-top: 10px;
+            display: none;
+        }
+    </style>
 </head>
 <body>
-  <h1 data-i18n="extensionName">哔哩哔哩弹幕分析</h1>
-  <p data-i18n="extensionDesc">在哔哩哔哩视频页面点击扩展图标，即可分析该视频的弹幕内容，生成单词云和情绪可视化。</p>
-  <button id="openAnalysisBtn" data-i18n="startAnalysis">开始分析</button>
-  
-  <h2 data-i18n="advancedSettings">高级设置</h2>
-  <div class="setting-group">
-    <div class="switch-container">
-      <span class="setting-label" data-i18n="useLLM">启用LLM情绪分析</span>
-      <label class="switch">
-        <input type="checkbox" id="useLLM">
-        <span class="slider"></span>
-      </label>
+    <h1 data-i18n="extensionName">哔哩哔哩弹幕分析</h1>
+    <p data-i18n="extensionDesc">在哔哩哔哩视频页面点击扩展图标，即可分析该视频的弹幕内容，生成单词云和情绪可视化。</p>
+    <button id="openAnalysisBtn" data-i18n="startAnalysis">开始分析</button>
+    
+    <h2 data-i18n="advancedSettings">高级设置</h2>
+    <div class="setting-group">
+      <div class="switch-container">
+        <span class="setting-label" data-i18n="useLLM">启用LLM情绪分析</span>
+        <label class="switch">
+          <input type="checkbox" id="useLLM">
+          <span class="slider"></span>
+        </label>
+      </div>
+      
+      <div id="llmSettings" style="display: none;">
+        <label class="setting-label" data-i18n="selectLLMProvider">选择LLM提供商</label>
+        <select id="llmProvider">
+          <option value="openai">OpenAI (GPT)</option>
+          <option value="groq">Groq (Llama)</option>
+          <option value="moonshot">Moonshot (moonshot-v1)</option>
+          <option value="anthropic">Anthropic (Claude)</option>
+        </select>
+        
+        <label class="setting-label" data-i18n="apiKey">API密钥</label>
+        <input type="text" id="llmApiKey" placeholder="请输入您的API密钥">
+        
+        <button id="saveSettingsBtn" data-i18n="saveSettings">保存设置</button>
+        <div id="saveStatus" class="save-status" data-i18n="settingsSaved">设置已保存</div>
+      </div>
     </div>
     
-    <div id="llmSettings" style="display: none;">
-      <label class="setting-label" data-i18n="selectLLMProvider">选择LLM提供商</label>
-      <select id="llmProvider">
-        <option value="openai">OpenAI (GPT)</option>
-        <option value="groq">Groq (Llama)</option>
-        <option value="moonshot">Moonshot (moonshot-v1)</option>
-        <option value="anthropic">Anthropic (Claude)</option>
-      </select>
-      
-      <label class="setting-label" data-i18n="apiKey">API密钥</label>
-      <input type="text" id="llmApiKey" placeholder="请输入您的API密钥">
-      
-      <button id="saveSettingsBtn" data-i18n="saveSettings">保存设置</button>
-      <div id="saveStatus" class="save-status" data-i18n="settingsSaved">设置已保存</div>
+    <div class="setting-group">
+      <div class="switch-container">
+        <label class="setting-label" data-i18n="selectLanguage">选择语言</label>
+        <select id="languageSelect">
+          <option value="zh-CN">中文</option>
+          <option value="en-US">English</option>
+        </select>
+      </div>
     </div>
-  </div>
-  
-  <div class="setting-group">
-    <div class="switch-container">
-      <label class="setting-label" data-i18n="selectLanguage">选择语言</label>
-      <select id="languageSelect">
-        <option value="zh-CN">中文</option>
-        <option value="en-US">English</option>
-      </select>
+    
+    <div class="tips">
+      <p><strong data-i18n="usageInstructions">使用说明：</strong></p>
+      <p data-i18n="instructionStep1">1. 打开哔哩哔哩视频页面</p>
+      <p data-i18n="instructionStep2">2. 点击此扩展图标</p>
+      <p data-i18n="instructionStep3">3. 查看弹幕分析结果</p>
+      <p><strong data-i18n="llmAnalysisDesc">LLM分析说明：</strong></p>
+      <p data-i18n="llmAnalysisNote">启用后将使用AI模型进行更准确的情绪分析，需要配置对应平台的API密钥。</p>
     </div>
-  </div>
-  
-  <div class="tips">
-    <p><strong data-i18n="usageInstructions">使用说明：</strong></p>
-    <p data-i18n="instructionStep1">1. 打开哔哩哔哩视频页面</p>
-    <p data-i18n="instructionStep2">2. 点击此扩展图标</p>
-    <p data-i18n="instructionStep3">3. 查看弹幕分析结果</p>
-    <p><strong data-i18n="llmAnalysisDesc">LLM分析说明：</strong></p>
-    <p data-i18n="llmAnalysisNote">启用后将使用AI模型进行更准确的情绪分析，需要配置对应平台的API密钥。</p>
-  </div>
-  <div class="version" data-i18n="version">版本 1.0</div>
-  
-  <script type="module" src="popup.js"></script>
+    <div class="version" data-i18n="version">版本 1.0</div>
+    
+    <script type="module" src="popup.js"></script>
 </body>
 </html>

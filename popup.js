@@ -1,6 +1,42 @@
 // 初始化设置
 import { getText, setLanguage } from './lang.js';
+import { getAllServiceConfigurations, getSelectedServiceProvider, setSelectedServiceProvider } from "llm-service-provider";
 
+let isApiKeyManagerOpen = false;
+
+// 创建简单的API密钥管理界面
+function renderApiKeyManager() {
+  const container = document.getElementById('api-key-manager-container');
+  if (!container) return;
+  
+  // 如果关闭状态，清空容器
+  if (!isApiKeyManagerOpen) {
+    container.innerHTML = '';
+    container.style.display = 'none';
+    return;
+  }
+  
+  // 显示容器并创建简单界面
+  container.style.display = 'block';
+  container.innerHTML = `
+    <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000;">
+      <div style="background: white; margin: 50px auto; padding: 20px; border-radius: 8px; width: 90%; max-width: 500px;">
+        <h3>API密钥管理</h3>
+        <div style="margin-bottom: 20px;">
+          <p>使用llm-service-provider管理您的API密钥</p>
+          <p>当前选中的提供商: ${getSelectedServiceProvider() || '未选择'}</p>
+        </div>
+        <button id="closeApiManager">关闭</button>
+      </div>
+    </div>
+  `;
+  
+  // 添加关闭按钮事件
+  document.getElementById('closeApiManager').addEventListener('click', function() {
+    isApiKeyManagerOpen = false;
+    renderApiKeyManager();
+  });
+}
 document.addEventListener('DOMContentLoaded', () => {
   // 获取保存的设置
   Promise.all([
@@ -45,11 +81,29 @@ document.addEventListener('DOMContentLoaded', () => {
     chrome.storage.local.set({ language: selectedLanguage });
   });
 
+  // 添加ApiKeyManager容器
+  const apiManagerContainer = document.createElement('div');
+  apiManagerContainer.id = 'api-key-manager-container';
+  document.body.appendChild(apiManagerContainer);
+  
+  // 初始化渲染ApiKeyManager组件
+  renderApiKeyManager();
+  
+  // 添加一个按钮来打开ApiKeyManager（如果需要）
+  const openApiManagerBtn = document.createElement('button');
+  openApiManagerBtn.textContent = 'API密钥管理';
+  openApiManagerBtn.addEventListener('click', function() {
+    isApiKeyManagerOpen = true;
+    renderApiKeyManager();
+  });
+  document.body.appendChild(openApiManagerBtn);
+  
   // 保存设置按钮事件
   document.getElementById('saveSettingsBtn').addEventListener('click', function() {
     const useLLM = document.getElementById('useLLM').checked;
     const llmProvider = document.getElementById('llmProvider').value;
     const llmApiKey = document.getElementById('llmApiKey').value;
+    const configs = getAllServiceConfigurations();
     
     chrome.runtime.sendMessage({
       action: 'saveLLMSettings',
