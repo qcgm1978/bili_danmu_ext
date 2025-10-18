@@ -1,14 +1,11 @@
 async function loadLocalConfig() {
-  try {
-    const response = await fetch(chrome.runtime.getURL('config.js'));
-    if (response.ok) {
-      const configContent = await response.text();
-      const keyMatch = configContent.match(/llmApiKey:\s*['"]([^'"]*)['"]/);
-      if (keyMatch && keyMatch[1]) {
-        return keyMatch[1];
-      }
+  const response = await fetch(chrome.runtime.getURL('config.js'));
+  if (response.ok) {
+    const configContent = await response.text();
+    const keyMatch = configContent.match(/llmApiKey:\s*['"]([^'"]*)['"]/);
+    if (keyMatch && keyMatch[1]) {
+      return keyMatch[1];
     }
-  } catch (e) {
   }
   return '';
 }
