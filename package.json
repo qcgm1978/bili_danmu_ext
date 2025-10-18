@@ -1,0 +1,17 @@
+{
+  "name": "bili_danmu_ext",
+  "version": "1.1.0",
+  "description": "哔哩哔哩弹幕分析扩展",
+  "main": "background.js",
+  "scripts": {
+    "dev": "echo 'Dev mode'",
+    "build": "zip -r bili_danmu_ext.zip manifest.json content.js background.js icons/ styles.css popup.js popup.html index.html lang.js lib/ privacy_policy.md publish_guide.md public_key_guide.md privacy_policy_setup_guide.md contact_email_setup_guide.md"
+  },
+  "dependencies": {
+    "wordcloud": "^1.2.2",
+    "chart.js": "^4.4.8"
+  },
+  "keywords": ["chrome-extension", "bilibili", "danmu"],
+  "author": "",
+  "license": "ISC"
+}

@@ -1,0 +1,12 @@
+// 本地配置文件 - 请复制为config.js并填入您的API密钥
+// 注意：此文件不会被git追踪，请勿在版本控制中提交真实密钥
+const localConfig = {
+  llmApiKey: 'your_groq_api_key_here'
+};
+
+// 导出配置，供background.js使用
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = localConfig;
+} else {
+  window.localConfig = localConfig;
+}
