@@ -757,11 +757,9 @@ function generateSentimentChart(classifiedDanmu) {
     })
   );
 
-  // 确保canvas容器有正确的大小
   div.style.width = "100%";
   div.style.height = "300px";
 
-  // 清空canvas内容
   while (div.firstChild) {
     div.removeChild(div.firstChild);
   }
@@ -787,16 +785,20 @@ function generateSentimentChart(classifiedDanmu) {
 
       // 设置图表属性
       // chart.title("弹幕情绪分析");
+      const total = positiveCount + negativeCount + neutralCount;
       chart.title().enabled(false);
       chart.radius("70%");
       chart.palette(["#4CAF50", "#F44336", "#9E9E9E"]);
       chart.legend().position("bottom");
-      chart.legend().itemsFormat("{%name}: {%value}%");
+      chart.legend().itemsFormat(function() {
+        const total = positiveCount + negativeCount + neutralCount;
+        const percentage = total > 0 ? Math.round((this.value / total) * 100) : 0;
+        return this.name + ": " + percentage + "%";
+      });
       chart.credits().enabled(false);
 
       // 设置tooltip
       chart.tooltip().format(function () {
-        const total = positiveCount + negativeCount + neutralCount;
         const percentage =
           total > 0 ? Math.round((this.value / total) * 100) : 0;
         return this.name + ": " + this.value + " (" + percentage + "%)";
