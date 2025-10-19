@@ -100,14 +100,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 chrome.tabs.sendMessage(activeTab.id, { action: 'showAnalysisPanel' }, () => {
                   spinner.classList.remove('show');
                   document.getElementById('mainMenu').style.display = 'none';
-                  document.getElementById('analysisResult').style.display = 'block';
+                  // document.getElementById('analysisResult').style.display = 'block';
                 });
               }, 500);
             });
           } else {
             spinner.classList.remove('show');
             document.getElementById('mainMenu').style.display = 'none';
-            document.getElementById('analysisResult').style.display = 'block';
+            // document.getElementById('analysisResult').style.display = 'block';
           }
         });
       } else {
@@ -115,6 +115,7 @@ document.addEventListener('DOMContentLoaded', () => {
         spinner.classList.remove('show');
       }
     });
+    document.body.style.display='none'
   });
   
   // 返回菜单按钮事件

@@ -14,7 +14,7 @@ chrome.runtime.onInstalled.addListener(async () => {
   console.log('哔哩哔哩弹幕分析扩展已安装');
   const isDevMode = !('update_url' in chrome.runtime.getManifest());
   const defaultConfig = {
-    useLLM: false,
+    useLLM: true,
     llmProvider: 'groq',
     llmApiKey: ''
   };
