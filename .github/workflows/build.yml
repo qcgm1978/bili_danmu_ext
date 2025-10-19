@@ -1,0 +1,46 @@
+name: Build and Release
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '16'
+    
+    - name: Install dependencies
+      run: npm install
+    
+    - name: Build extension
+      run: |
+        mkdir -p build
+        cp -r manifest.json background.js content.js popup.html popup.js styles.css icons/ lib/ README.md privacy_policy.md build/
+        cd build
+        zip -r ../bili_danmu_ext.zip .
+    
+    - name: Upload build artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: bili-danmu-extension
+        path: bili_danmu_ext.zip
+        retention-days: 90
+    
+    - name: Create Release
+      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      uses: softprops/action-gh-release@v1
+      with:
+        files: bili_danmu_ext.zip
+        name: 自动构建版本 ${{ github.sha }}
+        body: 最新的自动构建版本
+        prerelease: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

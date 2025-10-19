@@ -22,6 +22,7 @@ function getText(key, language) {
       positive: "正面",
       negative: "负面",
       neutral: "中性",
+      downloadLatestVersion: "下载最新版本",
     },
     "en-US": {
       analysisPanelTitle: "Danmu Analysis",
@@ -35,6 +36,7 @@ function getText(key, language) {
       positive: "Positive",
       negative: "Negative",
       neutral: "Neutral",
+      downloadLatestVersion: "Download Latest Version",
     },
   };
   return texts[language]?.[key] || texts["zh-CN"][key] || key;
