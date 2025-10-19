@@ -196,6 +196,161 @@ function createAnalysisPanel() {
   });
 }
 
+// 使用LLM进行分词
+function tokenizeWithLLM(danmuList, callback) {
+  // 检查用户是否启用了LLM分析
+  chrome.storage.local.get(["useLLM", "llmApiKey", "llmProvider"], (result) => {
+    // 确保result对象存在并添加默认值
+    result = result || {};
+    const useLLM = result.useLLM === true;
+    const llmApiKey = result.llmApiKey || "";
+
+    if (!useLLM || !llmApiKey) {
+      // 如果未启用LLM或没有API密钥，使用传统方法
+      callback(null);
+      return;
+    }
+
+    // 准备请求参数
+    const provider = result.llmProvider || "groq";
+    const prompt = `请对以下B站弹幕进行分词，只返回分词结果，不要包含任何其他解释或说明。每行一条弹幕，分词结果用空格分隔。\n\n${danmuList.slice(0, 100).join("\n")}\n\n请按每条弹幕一行，格式为：弹幕内容 -> 分词结果（空格分隔）`;
+
+    let apiUrl, headers, body;
+
+    // 根据不同的提供商设置请求参数
+    switch (provider) {
+      case "openai":
+        apiUrl = "https://api.openai.com/v1/chat/completions";
+        headers = {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${llmApiKey}`,
+        };
+        body = JSON.stringify({
+          model: "gpt-3.5-turbo",
+          messages: [
+            {
+              role: "user",
+              content: prompt,
+            },
+          ],
+          max_tokens: 2000,
+        });
+        break;
+      case "groq":
+        apiUrl = "https://api.groq.com/openai/v1/chat/completions";
+        headers = {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${llmApiKey}`,
+        };
+        body = JSON.stringify({
+          model: "meta-llama/llama-4-maverick-17b-128e-instruct",
+          messages: [
+            {
+              role: "user",
+              content: prompt,
+            },
+          ],
+          max_tokens: 2000,
+        });
+        break;
+      case "moonshot":
+        apiUrl = "https://api.moonshot.cn/v1/chat/completions";
+        headers = {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${llmApiKey}`,
+        };
+        body = JSON.stringify({
+          model: "moonshot-v1-8k",
+          messages: [
+            {
+              role: "user",
+              content: prompt,
+            },
+          ],
+          max_tokens: 2000,
+        });
+        break;
+      case "anthropic":
+        apiUrl = "https://api.anthropic.com/v1/messages";
+        headers = {
+          "Content-Type": "application/json",
+          "x-api-key": llmApiKey,
+          "anthropic-version": "2023-06-01",
+        };
+        body = JSON.stringify({
+          model: "claude-3-haiku-20240307",
+          messages: [
+            {
+              role: "user",
+              content: prompt,
+            },
+          ],
+          max_tokens: 2000,
+        });
+        break;
+      default:
+        apiUrl = "https://api.openai.com/v1/chat/completions";
+        headers = {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${llmApiKey}`,
+        };
+        body = JSON.stringify({
+          model: "gpt-3.5-turbo",
+          messages: [
+            {
+              role: "user",
+              content: prompt,
+            },
+          ],
+          max_tokens: 2000,
+        });
+    }
+
+    // 发送请求到LLM API
+    fetch(apiUrl, {
+      method: "POST",
+      headers: headers,
+      body: body,
+    })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error("API请求失败");
+        }
+        return response.json();
+      })
+      .then((data) => {
+        // 解析返回结果
+        let responseText = "";
+        if (provider === "anthropic") {
+          responseText = data.content[0]?.text || "";
+        } else {
+          responseText = data.choices[0]?.message?.content || "";
+        }
+
+        // 解析分词结果
+        const tokenizedResult = new Map();
+        if (responseText) {
+          const lines = responseText.split("\n");
+          lines.forEach((line) => {
+            const parts = line.split("->");
+            if (parts.length === 2) {
+              const danmu = parts[0].trim();
+              const tokens = parts[1].trim().split(/\s+/);
+              tokenizedResult.set(danmu, tokens);
+            }
+          });
+        }
+
+        callback(tokenizedResult);
+      })
+      .catch((error) => {
+        console.error("LLM分词失败:", error);
+        // 发生错误时返回null，使用传统分词方法
+        callback(null);
+      });
+  });
+}
+
 // 使用LLM进行弹幕情绪分析
 function analyzeDanmuWithLLM(danmuList, callback) {
   // 检查用户是否启用了LLM分析
@@ -473,49 +628,52 @@ function fetchDanmuFromAPI() {
             const uniqueDanmuList = Array.from(danmuFrequency.keys());
 
             if (uniqueDanmuList.length > 0) {
-              // 使用LLM进行分析，失败时自动回退到传统方法
-              analyzeDanmuWithLLM(uniqueDanmuList, (classifiedDanmu) => {
-                // 修改classifiedDanmu对象，添加原始弹幕总数和频率信息
-                classifiedDanmu.originalCount = originalDanmuList.length;
-                classifiedDanmu.danmuFrequency = danmuFrequency;
+                // 使用LLM进行分析，失败时自动回退到传统方法
+                analyzeDanmuWithLLM(uniqueDanmuList, (classifiedDanmu) => {
+                  // 修改classifiedDanmu对象，添加原始弹幕总数和频率信息
+                  classifiedDanmu.originalCount = originalDanmuList.length;
+                  classifiedDanmu.danmuFrequency = danmuFrequency;
 
-                // 根据弹幕频率调整情绪分析结果，确保统计数据考虑重复弹幕
-                const weightedClassifiedDanmu = {
-                  allDanmu: classifiedDanmu.allDanmu,
-                  originalCount: classifiedDanmu.originalCount,
-                  danmuFrequency: classifiedDanmu.danmuFrequency,
-                  positiveDanmu: [],
-                  negativeDanmu: [],
-                  neutralDanmu: [],
-                };
+                  // 根据弹幕频率调整情绪分析结果，确保统计数据考虑重复弹幕
+                  const weightedClassifiedDanmu = {
+                    allDanmu: classifiedDanmu.allDanmu,
+                    originalCount: classifiedDanmu.originalCount,
+                    danmuFrequency: classifiedDanmu.danmuFrequency,
+                    positiveDanmu: [],
+                    negativeDanmu: [],
+                    neutralDanmu: [],
+                  };
 
-                // 根据弹幕频率重新计算情绪分类
-                classifiedDanmu.positiveDanmu.forEach((danmu) => {
-                  const frequency = danmuFrequency.get(danmu);
-                  for (let i = 0; i < frequency; i++) {
-                    weightedClassifiedDanmu.positiveDanmu.push(danmu);
-                  }
+                  // 根据弹幕频率重新计算情绪分类
+                  classifiedDanmu.positiveDanmu.forEach((danmu) => {
+                    const frequency = danmuFrequency.get(danmu);
+                    for (let i = 0; i < frequency; i++) {
+                      weightedClassifiedDanmu.positiveDanmu.push(danmu);
+                    }
+                  });
+
+                  classifiedDanmu.negativeDanmu.forEach((danmu) => {
+                    const frequency = danmuFrequency.get(danmu);
+                    for (let i = 0; i < frequency; i++) {
+                      weightedClassifiedDanmu.negativeDanmu.push(danmu);
+                    }
+                  });
+
+                  classifiedDanmu.neutralDanmu.forEach((danmu) => {
+                    const frequency = danmuFrequency.get(danmu);
+                    for (let i = 0; i < frequency; i++) {
+                      weightedClassifiedDanmu.neutralDanmu.push(danmu);
+                    }
+                  });
+
+                  // 先使用LLM进行分词，再生成单词云
+                  tokenizeWithLLM(uniqueDanmuList, (tokenizedResult) => {
+                    updateStats(weightedClassifiedDanmu);
+                    generateWordCloud(classifiedDanmu.allDanmu, danmuFrequency, tokenizedResult);
+                    generateSentimentChart(weightedClassifiedDanmu);
+                  });
                 });
-
-                classifiedDanmu.negativeDanmu.forEach((danmu) => {
-                  const frequency = danmuFrequency.get(danmu);
-                  for (let i = 0; i < frequency; i++) {
-                    weightedClassifiedDanmu.negativeDanmu.push(danmu);
-                  }
-                });
-
-                classifiedDanmu.neutralDanmu.forEach((danmu) => {
-                  const frequency = danmuFrequency.get(danmu);
-                  for (let i = 0; i < frequency; i++) {
-                    weightedClassifiedDanmu.neutralDanmu.push(danmu);
-                  }
-                });
-
-                updateStats(weightedClassifiedDanmu);
-                generateWordCloud(classifiedDanmu.allDanmu, danmuFrequency);
-                generateSentimentChart(weightedClassifiedDanmu);
-              });
-            }
+              }
           });
       }
     });
@@ -539,7 +697,7 @@ function updateStats(classifiedDanmu) {
 }
 
 // 生成单词云
-function generateWordCloud(danmuList, danmuFrequency) {
+function generateWordCloud(danmuList, danmuFrequency, tokenizedResult) {
   if (!analysisPanel) return;
 
   let canvas = document.getElementById("wordcloud-canvas");
@@ -560,8 +718,17 @@ function generateWordCloud(danmuList, danmuFrequency) {
   // 使用传入的弹幕频率信息或重新计算
   let wordFrequency = {};
 
-  // 无论是否传入danmuFrequency，都进行单词拆分和统计
-  if (danmuFrequency instanceof Map) {
+  // 如果有LLM分词结果，使用LLM分词结果
+  if (tokenizedResult instanceof Map && tokenizedResult.size > 0) {
+    tokenizedResult.forEach((tokens, danmu) => {
+      const frequency = danmuFrequency.get(danmu) || 1;
+      tokens.forEach((token) => {
+        if (token.length > 1) {
+          wordFrequency[token] = (wordFrequency[token] || 0) + frequency;
+        }
+      });
+    });
+  } else if (danmuFrequency instanceof Map) {
     // 将每个弹幕句子拆分为单词并统计频率
     danmuFrequency.forEach((frequency, danmu) => {
       const words = danmu.split(/[\s,，。！？；;.!?]+/);
@@ -597,21 +764,37 @@ function generateWordCloud(danmuList, danmuFrequency) {
   // 使用wordcloud库生成单词云
   if (window.wordcloud && words.length > 0) {
     try {
+      // 计算频率的最大值和最小值，用于归一化颜色
+      let maxFreq = 0;
+      let minFreq = Infinity;
+      words.forEach(word => {
+        maxFreq = Math.max(maxFreq, word[1]);
+        minFreq = Math.min(minFreq, word[1]);
+      });
+      const freqRange = maxFreq - minFreq || 1;
+      
       window.wordcloud(canvas, {
         list: words,
         gridSize: 12,
-        weightFactor: 10,
+        weightFactor: 15, // 增加权重因子使字体大小差异更明显
         fontFamily: "Arial, sans-serif",
         color: function (word, weight, fontSize, distance, theta) {
-          return "hsl(" + Math.random() * 360 + ", 70%, 50%)";
+          // 根据单词频率计算归一化值
+          const normalizedFreq = (weight - minFreq) / freqRange;
+          // 高频词使用更鲜艳的颜色（更高饱和度和适中亮度）
+          const saturation = 60 + normalizedFreq * 30; // 60%到90%
+          const lightness = 40 + normalizedFreq * 20;  // 40%到60%
+          // 使用黄金角度算法生成颜色，使颜色分布更均匀
+          const hue = (weight * 137.5) % 360;
+          return "hsl(" + hue + ", " + saturation + "%, " + lightness + "%)";
         },
-        rotateRatio: 0.5,
+        rotateRatio: 0.4, // 减少旋转比例，使文本更易读
         rotationSteps: 2,
         backgroundColor: "transparent",
         drawOutOfBound: false,
         shrinkToFit: true,
         shape: "circle",
-        ellipticity: 0.65,
+        ellipticity: 0.7, // 稍微增加椭圆率
       });
     } catch (error) {
       // 如果wordcloud库加载失败，使用简单的备选方法
@@ -668,21 +851,37 @@ function generateWordCloud(danmuList, danmuFrequency) {
     // 绘制放大的单词云
     if (window.wordcloud && savedWords.length > 0) {
       try {
+        // 计算频率的最大值和最小值，用于归一化颜色
+        let maxFreq = 0;
+        let minFreq = Infinity;
+        savedWords.forEach(word => {
+          maxFreq = Math.max(maxFreq, word[1]);
+          minFreq = Math.min(minFreq, word[1]);
+        });
+        const freqRange = maxFreq - minFreq || 1;
+        
         window.wordcloud(largeCanvas, {
           list: savedWords,
           gridSize: 20,
-          weightFactor: 20,
+          weightFactor: 25, // 增加权重因子使字体大小差异更明显
           fontFamily: "Arial, sans-serif",
           color: function (word, weight, fontSize, distance, theta) {
-            return "hsl(" + Math.random() * 360 + ", 70%, 50%)";
+            // 根据单词频率计算归一化值
+            const normalizedFreq = (weight - minFreq) / freqRange;
+            // 高频词使用更鲜艳的颜色（更高饱和度和适中亮度）
+            const saturation = 60 + normalizedFreq * 30; // 60%到90%
+            const lightness = 40 + normalizedFreq * 20;  // 40%到60%
+            // 使用黄金角度算法生成颜色，使颜色分布更均匀
+            const hue = (weight * 137.5) % 360;
+            return "hsl(" + hue + ", " + saturation + "%, " + lightness + "%)";
           },
-          rotateRatio: 0.5,
+          rotateRatio: 0.4, // 减少旋转比例，使文本更易读
           rotationSteps: 2,
           backgroundColor: "transparent",
           drawOutOfBound: false,
           shrinkToFit: true,
           shape: "circle",
-          ellipticity: 0.65,
+          ellipticity: 0.7, // 稍微增加椭圆率
         });
       } catch (error) {
         // 如果wordcloud库加载失败，使用简单的备选方法
@@ -707,33 +906,103 @@ function generateWordCloud(danmuList, danmuFrequency) {
 // 简单的单词云绘制方法（备选方案）
 function drawSimpleWordCloud(canvas, words) {
   const ctx = canvas.getContext("2d");
-  ctx.fillStyle = "#333";
   ctx.textAlign = "center";
 
-  // 随机位置绘制单词
   const centerX = canvas.width / 2;
   const centerY = canvas.height / 2;
-  const maxRadius = Math.min(centerX, centerY) - 30;
-
+  
+  // 计算频率的最大值和最小值，用于归一化
+  let maxFreq = 0;
+  let minFreq = Infinity;
+  words.forEach(word => {
+    maxFreq = Math.max(maxFreq, word[1]);
+    minFreq = Math.min(minFreq, word[1]);
+  });
+  
+  // 确保分母不为0
+  const freqRange = maxFreq - minFreq || 1;
+  
+  // 创建一个用于存储已放置单词的区域，避免重叠
+  const placedWords = [];
+  
   words.forEach((word, index) => {
-    const angle = (index / words.length) * Math.PI * 2;
-    const radius = (index / words.length) * maxRadius;
-    const x = centerX + Math.cos(angle) * radius;
-    const y = centerY + Math.sin(angle) * radius;
-
-    // 根据频率设置字体大小
-    const fontSize = Math.max(12, Math.min(36, word[1] * 4));
-    ctx.font = `${fontSize}px Arial`;
-
-    // 随机颜色
-    const hue = (index * 10) % 360;
-    ctx.fillStyle = `hsl(${hue}, 70%, 50%)`;
-
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.rotate(((Math.random() - 0.5) * Math.PI) / 3);
-    ctx.fillText(word[0], 0, 0);
-    ctx.restore();
+    // 根据频率计算字体大小，高频词更大
+    const normalizedFreq = (word[1] - minFreq) / freqRange;
+    const fontSize = 12 + normalizedFreq * 40; // 12px到52px的范围
+    ctx.font = `${fontSize}px Arial, sans-serif`;
+    
+    // 计算单词宽度
+    const wordWidth = ctx.measureText(word[0]).width;
+    
+    // 高频词放在中心附近，低频词放在外围
+    const ringFactor = 1 - normalizedFreq * 0.7; // 0.3到1的范围
+    const attempts = 50; // 最大尝试次数
+    let placed = false;
+    
+    for (let attempt = 0; attempt < attempts && !placed; attempt++) {
+      // 基于频率和尝试次数计算位置
+      let angle;
+      let radius;
+      
+      if (attempt === 0) {
+        // 第一次尝试：理想位置
+        angle = (index / words.length) * Math.PI * 2;
+        radius = ringFactor * Math.min(centerX, centerY) * 0.8;
+      } else {
+        // 后续尝试：在理想位置周围随机偏移
+        angle = (index / words.length) * Math.PI * 2 + (Math.random() - 0.5) * 0.5;
+        radius = ringFactor * Math.min(centerX, centerY) * 0.8 * (0.9 + Math.random() * 0.2);
+      }
+      
+      const x = centerX + Math.cos(angle) * radius;
+      const y = centerY + Math.sin(angle) * radius;
+      
+      // 检查是否与已放置的单词重叠
+      let overlap = false;
+      for (const placedWord of placedWords) {
+        const dx = x - placedWord.x;
+        const dy = y - placedWord.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        const minDistance = (wordWidth + placedWord.width) / 2 + 10;
+        
+        if (distance < minDistance) {
+          overlap = true;
+          break;
+        }
+      }
+      
+      if (!overlap && x > wordWidth/2 && x < canvas.width - wordWidth/2 && y > fontSize/2 && y < canvas.height - fontSize/2) {
+        // 根据频率设置颜色，高频词更鲜艳
+        const saturation = 60 + normalizedFreq * 30; // 60%到90%的饱和度
+        const lightness = 40 + normalizedFreq * 20; // 40%到60%的亮度
+        const hue = (word[1] * 137.5) % 360; // 使用黄金角度分散颜色
+        ctx.fillStyle = `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+        
+        // 随机轻微旋转
+        const rotation = (Math.random() - 0.5) * 0.5; // -0.25到0.25弧度
+        
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(rotation);
+        ctx.fillText(word[0], 0, 0);
+        ctx.restore();
+        
+        // 记录已放置的单词
+        placedWords.push({ x, y, width: wordWidth });
+        placed = true;
+      }
+    }
+    
+    // 如果尝试多次仍无法放置，则使用简单方式放置到边缘
+    if (!placed) {
+      const angle = (index / words.length) * Math.PI * 2;
+      const radius = Math.min(centerX, centerY) * 0.9;
+      const x = centerX + Math.cos(angle) * radius;
+      const y = centerY + Math.sin(angle) * radius;
+      
+      ctx.fillStyle = `hsl(${(word[1] * 137.5) % 360}, 70%, 50%)`;
+      ctx.fillText(word[0], x, y);
+    }
   });
 }
 
