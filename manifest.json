@@ -44,7 +44,7 @@
   },
   "web_accessible_resources": [
       {
-        "resources": ["popup.html", "lib/chart.umd.min.js", "lib/wordcloud.min.js", "chart_page.html", "chart_script.js", "lib/anychart-base.min.js", "lib/anychart-ui.min.js", "lib/anychart-exports.min.js", "styles.css", "config.js", "lib/d3.min.js", "lib/three.min.js", "lib/OrbitControls.js"],
+        "resources": ["popup.html", "lib/chart.umd.min.js", "lib/wordcloud.min.js", "chart_page.html", "chart_script.js", "lib/anychart-base.min.js", "lib/anychart-ui.min.js", "lib/anychart-exports.min.js", "styles.css", "config.js", "lib/d3.min.js", "lib/three.min.js", "lib/OrbitControls.js", "lib/helvetiker_regular.typeface.json", "lib/NotoSansSC-Regular.ttf"],
         "matches": ["https://www.bilibili.com/*"]
       }
     ]

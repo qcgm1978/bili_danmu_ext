@@ -137,7 +137,7 @@ function createAnalysisPanel() {
             </label>
           </div>
           <canvas id="wordcloud-canvas" width="400" height="300"></canvas>
-          <div id="wordcloud-canvas-3d" style="display: none; width: 400px; height: 300px;"></div>
+          <div id="wordcloud-canvas-3d" style="display: none; width: 100%; height: 300px;"></div>
           <div id="wordcloud-spinner" class="spinner"></div>
         </div>
         <div class="tab-content" id="sentiment-content">
@@ -974,14 +974,76 @@ function generate3DWordCloud(container, words) {
   scene.background = new THREE.Color(0xf5f5f5);
 
   // 创建相机
-  const camera = new THREE.PerspectiveCamera(75, width / height, 0.2, 1500);
+  const camera = new THREE.PerspectiveCamera(60, width / height, 0.1, 1500);
   camera.updateProjectionMatrix();
-  camera.position.set(0, max * 1.5, 0);
+  camera.position.set(0, max * 0.4, 0);
 
   // 创建渲染器
   const renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setSize(width, height);
   container.appendChild(renderer.domElement);
+  
+  // 保存单词数据用于全屏显示
+  const savedWords = words;
+  
+  // 添加点击全屏功能
+  renderer.domElement.style.cursor = 'pointer';
+  renderer.domElement.addEventListener('click', function() {
+    // 创建全屏覆盖层
+    const overlay = document.createElement('div');
+    overlay.style.position = 'fixed';
+    overlay.style.top = '0';
+    overlay.style.left = '0';
+    overlay.style.width = '100%';
+    overlay.style.height = '100%';
+    overlay.style.backgroundColor = 'rgba(0, 0, 0, 0.9)';
+    overlay.style.zIndex = '9999';
+    overlay.style.display = 'flex';
+    overlay.style.justifyContent = 'center';
+    overlay.style.alignItems = 'center';
+    overlay.style.cursor = 'pointer';
+    
+    // 创建关闭按钮
+    const closeBtn = document.createElement('button');
+    closeBtn.textContent = '关闭';
+    closeBtn.style.position = 'absolute';
+    closeBtn.style.top = '20px';
+    closeBtn.style.right = '20px';
+    closeBtn.style.padding = '10px 20px';
+    closeBtn.style.backgroundColor = '#fff';
+    closeBtn.style.border = 'none';
+    closeBtn.style.borderRadius = '5px';
+    closeBtn.style.fontSize = '16px';
+    closeBtn.style.cursor = 'pointer';
+    closeBtn.style.zIndex = '10000';
+    overlay.appendChild(closeBtn);
+    
+    // 创建全屏容器
+    const fullscreenContainer = document.createElement('div');
+    fullscreenContainer.style.width = '90%';
+    fullscreenContainer.style.height = '90%';
+    overlay.appendChild(fullscreenContainer);
+    
+    document.body.appendChild(overlay);
+    
+    // 在全屏容器中重新生成3D词云
+    generate3DWordCloudFullscreen(fullscreenContainer, savedWords);
+    
+    // 点击关闭按钮或覆盖层关闭全屏
+    function closeFullscreen() {
+      if (fullscreenContainer._3dCleanup) {
+        fullscreenContainer._3dCleanup();
+      }
+      document.body.removeChild(overlay);
+    }
+    
+    closeBtn.addEventListener('click', closeFullscreen);
+    overlay.addEventListener('click', function(e) {
+      if (e.target === overlay) {
+        closeFullscreen();
+      }
+    });
+  });
 
   // 添加灯光
   const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
@@ -1013,12 +1075,14 @@ function generate3DWordCloud(container, words) {
     ? d3.scaleLinear().domain([minFreq, maxFreq]).range([2, 20])
     : (value) => 2 + ((value - minFreq) / freqRange) * 18;
 
-  // 使用默认字体加载器
-  const fontLoader = new THREE.FontLoader();
+  // 确保fontLoader只被声明一次
+  let fontLoader;
+  if (!fontLoader) {
+    fontLoader = new THREE.FontLoader();
+  }
 
-  // 使用默认的Helvetiker字体（Three.js内置字体）
-  const fontUrl =
-    "https://cdn.jsdelivr.net/npm/three@0.152.2/examples/fonts/helvetiker_regular.typeface.json";
+  // 使用内置字体并优化中文字符支持
+  const fontUrl = chrome.runtime.getURL('lib/helvetiker_regular.typeface.json');
 
   fontLoader.load(fontUrl, function (font) {
     // 计算频率归一化值并创建3D文字
@@ -1036,35 +1100,57 @@ function generate3DWordCloud(container, words) {
       const saturation = 60 + normalizedFreq * 30;
       const lightness = 40 + normalizedFreq * 20;
       const color = new THREE.Color(
-        `hsl(${hue}, ${saturation}%, ${lightness}%)`
+        `hsl(${Math.round(hue)}, ${Math.round(saturation)}%, ${Math.round(lightness)}%)`
       );
 
-      // 创建文字几何体
-      const geometry = new THREE.TextBufferGeometry(text, {
-        font: font,
-        size: fontSize,
-        height: textHeight,
-        curveSegments: 3,
-        bevelThickness: 1,
-        bevelSize: 0.5,
-        bevelEnabled: true,
-      });
+      let textMesh;
+      // 检查是否包含中文字符
+      if (/[\u4e00-\u9fa5]/.test(text)) {
+        // 使用Canvas渲染中文字符
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d');
+        const textSize = fontSize * 10;
+        canvas.width = textSize * text.length;
+        canvas.height = textSize * 2;
+        
+        context.font = `${textSize}px Arial`;
+        context.fillStyle = color.getStyle();
+        context.textAlign = 'center';
+        context.textBaseline = 'middle';
+        context.fillText(text, canvas.width / 2, canvas.height / 2);
+        
+        const texture = new THREE.CanvasTexture(canvas);
+        const material = new THREE.MeshBasicMaterial({ map: texture, transparent: true });
+        const geometry = new THREE.PlaneGeometry(canvas.width / 10, canvas.height / 10);
+        textMesh = new THREE.Mesh(geometry, material);
+      } else {
+        // 创建文字几何体
+        const geometry = new THREE.TextBufferGeometry(text, {
+          font: font,
+          size: fontSize,
+          height: textHeight,
+          curveSegments: 3,
+          bevelThickness: 1,
+          bevelSize: 0.5,
+          bevelEnabled: true,
+        });
 
-      geometry.computeBoundingBox();
-      geometry.computeVertexNormals();
+        geometry.computeBoundingBox();
+        geometry.computeVertexNormals();
 
-      // 计算文字的中心位置，使其居中
-      const centerOffset =
-        -0.5 * (geometry.boundingBox.max.x - geometry.boundingBox.min.x);
+        // 计算文字的中心位置，使其居中
+        const centerOffset =
+          -0.5 * (geometry.boundingBox.max.x - geometry.boundingBox.min.x);
 
-      // 创建材质
-      const material = new THREE.MeshPhongMaterial({
-        color: color,
-        flatShading: false,
-      });
+        // 创建材质
+        const material = new THREE.MeshPhongMaterial({
+          color: color,
+          flatShading: false,
+        });
 
-      // 创建网格
-      const textMesh = new THREE.Mesh(geometry, material);
+        // 创建网格
+        textMesh = new THREE.Mesh(geometry, material);
+      }
 
       // 计算文字的位置（球面上的随机分布）
       const radius =
@@ -1072,7 +1158,7 @@ function generate3DWordCloud(container, words) {
       const phi = Math.acos(-1 + (2 * index) / words.length);
       const theta = Math.sqrt(words.length * Math.PI) * phi;
 
-      const x = centerOffset + radius * Math.cos(theta) * Math.sin(phi);
+      const x = radius * Math.cos(theta) * Math.sin(phi);
       const y = radius * Math.sin(theta) * Math.sin(phi);
       const z = radius * Math.cos(phi);
 
@@ -1085,13 +1171,193 @@ function generate3DWordCloud(container, words) {
       scene.add(textMesh);
     });
 
-    // 添加轨道控制器
     const controls = new THREE.OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
-    controls.dampingFactor = 0.25;
+    controls.dampingFactor = 0.15;
     controls.enableZoom = true;
     controls.autoRotate = true;
-    controls.autoRotateSpeed = 0.5;
+    controls.autoRotateSpeed = 2.0;
+
+    // 动画循环
+    function animate() {
+      requestAnimationFrame(animate);
+      controls.update();
+      renderer.render(scene, camera);
+    }
+
+    animate();
+
+    // 响应窗口大小变化
+    function onWindowResize() {
+      const newWidth = container.clientWidth;
+      const newHeight = container.clientHeight;
+
+      camera.aspect = newWidth / newHeight;
+      camera.updateProjectionMatrix();
+
+      renderer.setSize(newWidth, newHeight);
+    }
+
+    window.addEventListener("resize", onWindowResize);
+
+    // 清理函数
+    container._3dCleanup = () => {
+      window.removeEventListener("resize", onWindowResize);
+      renderer.dispose();
+      scene.clear();
+    };
+  });
+}
+
+// 全屏3D单词云生成函数
+function generate3DWordCloudFullscreen(container, words) {
+  if (!window.THREE) return;
+
+  const width = container.clientWidth;
+  const height = container.clientHeight;
+  const max = Math.max(width, height);
+
+  // 创建场景
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x000000);
+
+  // 创建相机
+  const camera = new THREE.PerspectiveCamera(60, width / height, 0.1, 1500);
+  camera.updateProjectionMatrix();
+  camera.position.set(0, max * 0.4, 0);
+
+  // 创建渲染器
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(width, height);
+  container.appendChild(renderer.domElement);
+
+  // 添加灯光
+  const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+  scene.add(ambientLight);
+
+  const directionalLight1 = new THREE.DirectionalLight(0xffffff, 1);
+  directionalLight1.position.set(1, 1, 1);
+  scene.add(directionalLight1);
+
+  const directionalLight2 = new THREE.DirectionalLight(0xffffff, 0.5);
+  directionalLight2.position.set(-1, -1, -1);
+  scene.add(directionalLight2);
+
+  // 计算单词频率的范围
+  let maxFreq = 0;
+  let minFreq = Infinity;
+  words.forEach((word) => {
+    maxFreq = Math.max(maxFreq, word[1]);
+    minFreq = Math.min(minFreq, word[1]);
+  });
+  const freqRange = maxFreq - minFreq || 1;
+
+  // 生成单词大小和高度的缩放函数（全屏模式下更大）
+  const sizeScale = d3.scaleLinear
+    ? d3.scaleLinear().domain([minFreq, maxFreq]).range([20, 80])
+    : (value) => 20 + ((value - minFreq) / freqRange) * 60;
+
+  const heightScale = d3.scaleLinear
+    ? d3.scaleLinear().domain([minFreq, maxFreq]).range([4, 40])
+    : (value) => 4 + ((value - minFreq) / freqRange) * 36;
+
+  // 确保fontLoader只被声明一次
+  let fontLoader;
+  if (!fontLoader) {
+    fontLoader = new THREE.FontLoader();
+  }
+
+  // 使用内置字体并优化中文字符支持
+  const fontUrl = chrome.runtime.getURL('lib/helvetiker_regular.typeface.json');
+
+  fontLoader.load(fontUrl, function (font) {
+    // 计算频率归一化值并创建3D文字
+    words.forEach((word, index) => {
+      const text = word[0];
+      const frequency = word[1];
+      const normalizedFreq = (frequency - minFreq) / freqRange;
+
+      // 计算字体大小和厚度
+      const fontSize = sizeScale(frequency);
+      const textHeight = heightScale(frequency);
+
+      // 根据频率计算颜色
+      const hue = (frequency * 137.5) % 360;
+      const saturation = 60 + normalizedFreq * 30;
+      const lightness = 40 + normalizedFreq * 20;
+      const color = new THREE.Color(
+        `hsl(${Math.round(hue)}, ${Math.round(saturation)}%, ${Math.round(lightness)}%)`
+      );
+
+      let textMesh;
+      // 检查是否包含中文字符
+      if (/[\u4e00-\u9fa5]/.test(text)) {
+        // 使用Canvas渲染中文字符
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d');
+        const textSize = fontSize * 10;
+        canvas.width = textSize * text.length;
+        canvas.height = textSize * 2;
+        
+        context.font = `${textSize}px Arial`;
+        context.fillStyle = color.getStyle();
+        context.textAlign = 'center';
+        context.textBaseline = 'middle';
+        context.fillText(text, canvas.width / 2, canvas.height / 2);
+        
+        const texture = new THREE.CanvasTexture(canvas);
+        const material = new THREE.MeshBasicMaterial({ map: texture, transparent: true });
+        const geometry = new THREE.PlaneGeometry(canvas.width / 10, canvas.height / 10);
+        textMesh = new THREE.Mesh(geometry, material);
+      } else {
+        // 创建文字几何体
+        const geometry = new THREE.TextBufferGeometry(text, {
+          font: font,
+          size: fontSize,
+          height: textHeight,
+          curveSegments: 3,
+          bevelThickness: 1,
+          bevelSize: 0.5,
+          bevelEnabled: true,
+        });
+
+        geometry.computeBoundingBox();
+        geometry.computeVertexNormals();
+
+        // 创建材质
+        const material = new THREE.MeshPhongMaterial({
+          color: color,
+          flatShading: false,
+        });
+
+        // 创建网格
+        textMesh = new THREE.Mesh(geometry, material);
+      }
+
+      // 计算文字的位置（球面上的随机分布）
+      const radius = max * 0.4 * (0.3 + normalizedFreq * 0.7);
+      const phi = Math.acos(-1 + (2 * index) / words.length);
+      const theta = Math.sqrt(words.length * Math.PI) * phi;
+
+      const x = radius * Math.cos(theta) * Math.sin(phi);
+      const y = radius * Math.sin(theta) * Math.sin(phi);
+      const z = radius * Math.cos(phi);
+
+      textMesh.position.set(x, y, z);
+      textMesh.rotation.x = Math.random() * Math.PI * 2;
+      textMesh.rotation.y = Math.random() * Math.PI * 2;
+      textMesh.rotation.z = Math.random() * Math.PI * 2;
+
+      // 添加到场景
+      scene.add(textMesh);
+    });
+
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.15;
+    controls.enableZoom = true;
+    controls.autoRotate = true;
+    controls.autoRotateSpeed = 2.0;
 
     // 动画循环
     function animate() {
