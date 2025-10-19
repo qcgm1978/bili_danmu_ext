@@ -38,7 +38,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
   
-  // 语言选择事件
   document.getElementById('languageSelect').addEventListener('change', function() {
     const selectedLanguage = this.value;
     setLanguage(document.body, selectedLanguage);
