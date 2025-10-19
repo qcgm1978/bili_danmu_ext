@@ -62,8 +62,8 @@ function loadRequiredLibraries() {
         });
       }
     } else {
-      // 加载Chart.js
       loadScript(chrome.runtime.getURL("lib/chart.umd.min.js"), () => {
+        // 加载Chart.js
         // 加载WordCloud库
         loadScript(chrome.runtime.getURL("lib/wordcloud.min.js"), () => {
           resolve();
@@ -126,7 +126,18 @@ function createAnalysisPanel() {
           )}</button>
         </div>
         <div class="tab-content active" id="wordcloud-content">
+          <div class="wordcloud-options">
+            <label>
+              <input type="radio" name="wordcloud-type" value="2d" checked>
+              2D显示
+            </label>
+            <label>
+              <input type="radio" name="wordcloud-type" value="3d">
+              3D显示
+            </label>
+          </div>
           <canvas id="wordcloud-canvas" width="400" height="300"></canvas>
+          <div id="wordcloud-canvas-3d" style="display: none; width: 400px; height: 300px;"></div>
           <div id="wordcloud-spinner" class="spinner"></div>
         </div>
         <div class="tab-content" id="sentiment-content">
@@ -213,7 +224,11 @@ function tokenizeWithLLM(danmuList, callback) {
 
     // 准备请求参数
     const provider = result.llmProvider || "groq";
-    const prompt = `请对以下B站弹幕进行分词，只返回分词结果，不要包含任何其他解释或说明。每行一条弹幕，分词结果用空格分隔。\n\n${danmuList.slice(0, 100).join("\n")}\n\n请按每条弹幕一行，格式为：弹幕内容 -> 分词结果（空格分隔）`;
+    const prompt = `请对以下B站弹幕进行分词，只返回分词结果，不要包含任何其他解释或说明。每行一条弹幕，分词结果用空格分隔。\n\n${danmuList
+      .slice(0, 100)
+      .join(
+        "\n"
+      )}\n\n请按每条弹幕一行，格式为：弹幕内容 -> 分词结果（空格分隔）`;
 
     let apiUrl, headers, body;
 
@@ -628,52 +643,56 @@ function fetchDanmuFromAPI() {
             const uniqueDanmuList = Array.from(danmuFrequency.keys());
 
             if (uniqueDanmuList.length > 0) {
-                // 使用LLM进行分析，失败时自动回退到传统方法
-                analyzeDanmuWithLLM(uniqueDanmuList, (classifiedDanmu) => {
-                  // 修改classifiedDanmu对象，添加原始弹幕总数和频率信息
-                  classifiedDanmu.originalCount = originalDanmuList.length;
-                  classifiedDanmu.danmuFrequency = danmuFrequency;
+              // 使用LLM进行分析，失败时自动回退到传统方法
+              analyzeDanmuWithLLM(uniqueDanmuList, (classifiedDanmu) => {
+                // 修改classifiedDanmu对象，添加原始弹幕总数和频率信息
+                classifiedDanmu.originalCount = originalDanmuList.length;
+                classifiedDanmu.danmuFrequency = danmuFrequency;
 
-                  // 根据弹幕频率调整情绪分析结果，确保统计数据考虑重复弹幕
-                  const weightedClassifiedDanmu = {
-                    allDanmu: classifiedDanmu.allDanmu,
-                    originalCount: classifiedDanmu.originalCount,
-                    danmuFrequency: classifiedDanmu.danmuFrequency,
-                    positiveDanmu: [],
-                    negativeDanmu: [],
-                    neutralDanmu: [],
-                  };
+                // 根据弹幕频率调整情绪分析结果，确保统计数据考虑重复弹幕
+                const weightedClassifiedDanmu = {
+                  allDanmu: classifiedDanmu.allDanmu,
+                  originalCount: classifiedDanmu.originalCount,
+                  danmuFrequency: classifiedDanmu.danmuFrequency,
+                  positiveDanmu: [],
+                  negativeDanmu: [],
+                  neutralDanmu: [],
+                };
 
-                  // 根据弹幕频率重新计算情绪分类
-                  classifiedDanmu.positiveDanmu.forEach((danmu) => {
-                    const frequency = danmuFrequency.get(danmu);
-                    for (let i = 0; i < frequency; i++) {
-                      weightedClassifiedDanmu.positiveDanmu.push(danmu);
-                    }
-                  });
-
-                  classifiedDanmu.negativeDanmu.forEach((danmu) => {
-                    const frequency = danmuFrequency.get(danmu);
-                    for (let i = 0; i < frequency; i++) {
-                      weightedClassifiedDanmu.negativeDanmu.push(danmu);
-                    }
-                  });
-
-                  classifiedDanmu.neutralDanmu.forEach((danmu) => {
-                    const frequency = danmuFrequency.get(danmu);
-                    for (let i = 0; i < frequency; i++) {
-                      weightedClassifiedDanmu.neutralDanmu.push(danmu);
-                    }
-                  });
-
-                  // 先使用LLM进行分词，再生成单词云
-                  tokenizeWithLLM(uniqueDanmuList, (tokenizedResult) => {
-                    updateStats(weightedClassifiedDanmu);
-                    generateWordCloud(classifiedDanmu.allDanmu, danmuFrequency, tokenizedResult);
-                    generateSentimentChart(weightedClassifiedDanmu);
-                  });
+                // 根据弹幕频率重新计算情绪分类
+                classifiedDanmu.positiveDanmu.forEach((danmu) => {
+                  const frequency = danmuFrequency.get(danmu);
+                  for (let i = 0; i < frequency; i++) {
+                    weightedClassifiedDanmu.positiveDanmu.push(danmu);
+                  }
                 });
-              }
+
+                classifiedDanmu.negativeDanmu.forEach((danmu) => {
+                  const frequency = danmuFrequency.get(danmu);
+                  for (let i = 0; i < frequency; i++) {
+                    weightedClassifiedDanmu.negativeDanmu.push(danmu);
+                  }
+                });
+
+                classifiedDanmu.neutralDanmu.forEach((danmu) => {
+                  const frequency = danmuFrequency.get(danmu);
+                  for (let i = 0; i < frequency; i++) {
+                    weightedClassifiedDanmu.neutralDanmu.push(danmu);
+                  }
+                });
+
+                // 先使用LLM进行分词，再生成单词云
+                tokenizeWithLLM(uniqueDanmuList, (tokenizedResult) => {
+                  updateStats(weightedClassifiedDanmu);
+                  generateWordCloud(
+                    classifiedDanmu.allDanmu,
+                    danmuFrequency,
+                    tokenizedResult
+                  );
+                  generateSentimentChart(weightedClassifiedDanmu);
+                });
+              });
+            }
           });
       }
     });
@@ -701,10 +720,19 @@ function generateWordCloud(danmuList, danmuFrequency, tokenizedResult) {
   if (!analysisPanel) return;
 
   let canvas = document.getElementById("wordcloud-canvas");
+  let canvas3d = document.getElementById("wordcloud-canvas-3d");
 
   // 清空画布
   const ctx = canvas.getContext("2d");
   ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // 清除3D容器内容
+  if (canvas3d && canvas3d._3dCleanup) {
+    canvas3d._3dCleanup();
+  }
+  while (canvas3d && canvas3d.firstChild) {
+    canvas3d.removeChild(canvas3d.firstChild);
+  }
 
   // 保存单词数据和频率，用于放大显示
   let savedWords = [];
@@ -761,116 +789,39 @@ function generateWordCloud(danmuList, danmuFrequency, tokenizedResult) {
   savedWords = words;
   savedWordFrequency = wordFrequency;
 
-  // 使用wordcloud库生成单词云
-  if (window.wordcloud && words.length > 0) {
-    try {
-      // 计算频率的最大值和最小值，用于归一化颜色
-      let maxFreq = 0;
-      let minFreq = Infinity;
-      words.forEach(word => {
-        maxFreq = Math.max(maxFreq, word[1]);
-        minFreq = Math.min(minFreq, word[1]);
-      });
-      const freqRange = maxFreq - minFreq || 1;
-      
-      window.wordcloud(canvas, {
-        list: words,
-        gridSize: 12,
-        weightFactor: 15, // 增加权重因子使字体大小差异更明显
-        fontFamily: "Arial, sans-serif",
-        color: function (word, weight, fontSize, distance, theta) {
-          // 根据单词频率计算归一化值
-          const normalizedFreq = (weight - minFreq) / freqRange;
-          // 高频词使用更鲜艳的颜色（更高饱和度和适中亮度）
-          const saturation = 60 + normalizedFreq * 30; // 60%到90%
-          const lightness = 40 + normalizedFreq * 20;  // 40%到60%
-          // 使用黄金角度算法生成颜色，使颜色分布更均匀
-          const hue = (weight * 137.5) % 360;
-          return "hsl(" + hue + ", " + saturation + "%, " + lightness + "%)";
-        },
-        rotateRatio: 0.4, // 减少旋转比例，使文本更易读
-        rotationSteps: 2,
-        backgroundColor: "transparent",
-        drawOutOfBound: false,
-        shrinkToFit: true,
-        shape: "circle",
-        ellipticity: 0.7, // 稍微增加椭圆率
-      });
-    } catch (error) {
-      // 如果wordcloud库加载失败，使用简单的备选方法
-      drawSimpleWordCloud(canvas, words);
-    }
-  } else if (words.length > 0) {
-    // 如果库未加载，使用简单的备选方法
-    drawSimpleWordCloud(canvas, words);
-  }
+  // 获取当前选择的显示模式
+  const wordcloudType =
+    document.querySelector('input[name="wordcloud-type"]:checked')?.value ||
+    "2d";
 
-  // 隐藏spinner
-  setTimeout(() => {
-    const spinner = document.getElementById("wordcloud-spinner");
-    if (spinner) {
-      spinner.style.display = "none";
-    }
-  }, 300);
+  // 根据选择的模式显示相应的容器
+  if (wordcloudType === "2d") {
+    canvas.style.display = "block";
+    if (canvas3d) canvas3d.style.display = "none";
 
-  // 添加点击单词云放大功能
-  canvas.addEventListener("click", function () {
-    // 创建放大后的弹窗
-    const overlay = document.createElement("div");
-    overlay.style.position = "fixed";
-    overlay.style.top = "0";
-    overlay.style.left = "0";
-    overlay.style.width = "100%";
-    overlay.style.height = "100%";
-    overlay.style.backgroundColor = "rgba(0, 0, 0, 0.8)";
-    overlay.style.zIndex = "9999";
-    overlay.style.display = "flex";
-    overlay.style.justifyContent = "center";
-    overlay.style.alignItems = "center";
-    overlay.style.cursor = "pointer";
-
-    // 创建放大后的画布容器
-    const container = document.createElement("div");
-    container.style.backgroundColor = "white";
-    container.style.padding = "20px";
-    container.style.borderRadius = "8px";
-    container.style.maxWidth = "80%";
-    container.style.maxHeight = "80%";
-
-    // 创建放大后的画布
-    const largeCanvas = document.createElement("canvas");
-    largeCanvas.width = 800;
-    largeCanvas.height = 600;
-    largeCanvas.style.maxWidth = "100%";
-    largeCanvas.style.maxHeight = "100%";
-    container.appendChild(largeCanvas);
-    overlay.appendChild(container);
-
-    document.body.appendChild(overlay);
-
-    // 绘制放大的单词云
-    if (window.wordcloud && savedWords.length > 0) {
+    // 使用wordcloud库生成单词云
+    if (window.wordcloud && words.length > 0) {
       try {
         // 计算频率的最大值和最小值，用于归一化颜色
         let maxFreq = 0;
         let minFreq = Infinity;
-        savedWords.forEach(word => {
+        words.forEach((word) => {
           maxFreq = Math.max(maxFreq, word[1]);
           minFreq = Math.min(minFreq, word[1]);
         });
         const freqRange = maxFreq - minFreq || 1;
-        
-        window.wordcloud(largeCanvas, {
-          list: savedWords,
-          gridSize: 20,
-          weightFactor: 25, // 增加权重因子使字体大小差异更明显
+
+        window.wordcloud(canvas, {
+          list: words,
+          gridSize: 12,
+          weightFactor: 15, // 增加权重因子使字体大小差异更明显
           fontFamily: "Arial, sans-serif",
           color: function (word, weight, fontSize, distance, theta) {
             // 根据单词频率计算归一化值
             const normalizedFreq = (weight - minFreq) / freqRange;
             // 高频词使用更鲜艳的颜色（更高饱和度和适中亮度）
             const saturation = 60 + normalizedFreq * 30; // 60%到90%
-            const lightness = 40 + normalizedFreq * 20;  // 40%到60%
+            const lightness = 40 + normalizedFreq * 20; // 40%到60%
             // 使用黄金角度算法生成颜色，使颜色分布更均匀
             const hue = (weight * 137.5) % 360;
             return "hsl(" + hue + ", " + saturation + "%, " + lightness + "%)";
@@ -885,21 +836,291 @@ function generateWordCloud(danmuList, danmuFrequency, tokenizedResult) {
         });
       } catch (error) {
         // 如果wordcloud库加载失败，使用简单的备选方法
+        drawSimpleWordCloud(canvas, words);
+      }
+    } else if (words.length > 0) {
+      // 如果库未加载，使用简单的备选方法
+      drawSimpleWordCloud(canvas, words);
+    }
+  } else if (canvas3d) {
+    canvas.style.display = "none";
+    canvas3d.style.display = "block";
+
+    generate3DWordCloud(canvas3d, words);
+  }
+
+  // 隐藏spinner
+  setTimeout(() => {
+    const spinner = document.getElementById("wordcloud-spinner");
+    if (spinner) {
+      spinner.style.display = "none";
+    }
+  }, 300);
+
+  // 添加点击单词云放大功能
+  if (wordcloudType === "2d") {
+    canvas.addEventListener("click", function () {
+      // 创建放大后的弹窗
+      const overlay = document.createElement("div");
+      overlay.style.position = "fixed";
+      overlay.style.top = "0";
+      overlay.style.left = "0";
+      overlay.style.width = "100%";
+      overlay.style.height = "100%";
+      overlay.style.backgroundColor = "rgba(0, 0, 0, 0.8)";
+      overlay.style.zIndex = "9999";
+      overlay.style.display = "flex";
+      overlay.style.justifyContent = "center";
+      overlay.style.alignItems = "center";
+      overlay.style.cursor = "pointer";
+
+      // 创建放大后的画布容器
+      const container = document.createElement("div");
+      container.style.backgroundColor = "white";
+      container.style.padding = "20px";
+      container.style.borderRadius = "8px";
+      container.style.maxWidth = "80%";
+      container.style.maxHeight = "80%";
+
+      // 创建放大后的画布
+      const largeCanvas = document.createElement("canvas");
+      largeCanvas.width = 800;
+      largeCanvas.height = 600;
+      largeCanvas.style.maxWidth = "100%";
+      largeCanvas.style.maxHeight = "100%";
+      container.appendChild(largeCanvas);
+      overlay.appendChild(container);
+
+      document.body.appendChild(overlay);
+
+      // 绘制放大的单词云
+      if (window.wordcloud && savedWords.length > 0) {
+        try {
+          // 计算频率的最大值和最小值，用于归一化颜色
+          let maxFreq = 0;
+          let minFreq = Infinity;
+          savedWords.forEach((word) => {
+            maxFreq = Math.max(maxFreq, word[1]);
+            minFreq = Math.min(minFreq, word[1]);
+          });
+          const freqRange = maxFreq - minFreq || 1;
+
+          window.wordcloud(largeCanvas, {
+            list: savedWords,
+            gridSize: 20,
+            weightFactor: 25, // 增加权重因子使字体大小差异更明显
+            fontFamily: "Arial, sans-serif",
+            color: function (word, weight, fontSize, distance, theta) {
+              // 根据单词频率计算归一化值
+              const normalizedFreq = (weight - minFreq) / freqRange;
+              // 高频词使用更鲜艳的颜色（更高饱和度和适中亮度）
+              const saturation = 60 + normalizedFreq * 30; // 60%到90%
+              const lightness = 40 + normalizedFreq * 20; // 40%到60%
+              // 使用黄金角度算法生成颜色，使颜色分布更均匀
+              const hue = (weight * 137.5) % 360;
+              return (
+                "hsl(" + hue + ", " + saturation + "%, " + lightness + "%)"
+              );
+            },
+            rotateRatio: 0.4, // 减少旋转比例，使文本更易读
+            rotationSteps: 2,
+            backgroundColor: "transparent",
+            drawOutOfBound: false,
+            shrinkToFit: true,
+            shape: "circle",
+            ellipticity: 0.7, // 稍微增加椭圆率
+          });
+        } catch (error) {
+          // 如果wordcloud库加载失败，使用简单的备选方法
+          const ctx = largeCanvas.getContext("2d");
+          drawSimpleWordCloud(largeCanvas, savedWords);
+        }
+      } else if (savedWords.length > 0) {
+        // 如果库未加载，使用简单的备选方法
         const ctx = largeCanvas.getContext("2d");
         drawSimpleWordCloud(largeCanvas, savedWords);
       }
-    } else if (savedWords.length > 0) {
-      // 如果库未加载，使用简单的备选方法
-      const ctx = largeCanvas.getContext("2d");
-      drawSimpleWordCloud(largeCanvas, savedWords);
+
+      // 点击空白处关闭放大视图
+      overlay.addEventListener("click", function (e) {
+        if (e.target === overlay) {
+          document.body.removeChild(overlay);
+        }
+      });
+    });
+  }
+
+  // 添加3D/2D切换事件
+  const radioButtons = document.querySelectorAll(
+    'input[name="wordcloud-type"]'
+  );
+  radioButtons.forEach((radio) => {
+    radio.addEventListener("change", () => {
+      generateWordCloud(danmuList, danmuFrequency, tokenizedResult);
+    });
+  });
+}
+
+// 生成3D单词云
+function generate3DWordCloud(container, words) {
+  if (!window.THREE) return;
+
+  const width = container.clientWidth;
+  const height = container.clientHeight;
+  const max = Math.max(width, height);
+
+  // 创建场景
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0xf5f5f5);
+
+  // 创建相机
+  const camera = new THREE.PerspectiveCamera(75, width / height, 0.2, 1500);
+  camera.updateProjectionMatrix();
+  camera.position.set(0, max * 1.5, 0);
+
+  // 创建渲染器
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(width, height);
+  container.appendChild(renderer.domElement);
+
+  // 添加灯光
+  const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+  scene.add(ambientLight);
+
+  const directionalLight1 = new THREE.DirectionalLight(0xffffff, 1);
+  directionalLight1.position.set(1, 1, 1);
+  scene.add(directionalLight1);
+
+  const directionalLight2 = new THREE.DirectionalLight(0xffffff, 0.5);
+  directionalLight2.position.set(-1, -1, -1);
+  scene.add(directionalLight2);
+
+  // 计算单词频率的范围
+  let maxFreq = 0;
+  let minFreq = Infinity;
+  words.forEach((word) => {
+    maxFreq = Math.max(maxFreq, word[1]);
+    minFreq = Math.min(minFreq, word[1]);
+  });
+  const freqRange = maxFreq - minFreq || 1;
+
+  // 生成单词大小和高度的缩放函数
+  const sizeScale = d3.scaleLinear
+    ? d3.scaleLinear().domain([minFreq, maxFreq]).range([10, 40])
+    : (value) => 10 + ((value - minFreq) / freqRange) * 30;
+
+  const heightScale = d3.scaleLinear
+    ? d3.scaleLinear().domain([minFreq, maxFreq]).range([2, 20])
+    : (value) => 2 + ((value - minFreq) / freqRange) * 18;
+
+  // 使用默认字体加载器
+  const fontLoader = new THREE.FontLoader();
+
+  // 使用默认的Helvetiker字体（Three.js内置字体）
+  const fontUrl =
+    "https://cdn.jsdelivr.net/npm/three@0.152.2/examples/fonts/helvetiker_regular.typeface.json";
+
+  fontLoader.load(fontUrl, function (font) {
+    // 计算频率归一化值并创建3D文字
+    words.forEach((word, index) => {
+      const text = word[0];
+      const frequency = word[1];
+      const normalizedFreq = (frequency - minFreq) / freqRange;
+
+      // 计算字体大小和厚度
+      const fontSize = sizeScale(frequency);
+      const textHeight = heightScale(frequency);
+
+      // 根据频率计算颜色
+      const hue = (frequency * 137.5) % 360;
+      const saturation = 60 + normalizedFreq * 30;
+      const lightness = 40 + normalizedFreq * 20;
+      const color = new THREE.Color(
+        `hsl(${hue}, ${saturation}%, ${lightness}%)`
+      );
+
+      // 创建文字几何体
+      const geometry = new THREE.TextBufferGeometry(text, {
+        font: font,
+        size: fontSize,
+        height: textHeight,
+        curveSegments: 3,
+        bevelThickness: 1,
+        bevelSize: 0.5,
+        bevelEnabled: true,
+      });
+
+      geometry.computeBoundingBox();
+      geometry.computeVertexNormals();
+
+      // 计算文字的中心位置，使其居中
+      const centerOffset =
+        -0.5 * (geometry.boundingBox.max.x - geometry.boundingBox.min.x);
+
+      // 创建材质
+      const material = new THREE.MeshPhongMaterial({
+        color: color,
+        flatShading: false,
+      });
+
+      // 创建网格
+      const textMesh = new THREE.Mesh(geometry, material);
+
+      // 计算文字的位置（球面上的随机分布）
+      const radius =
+        Math.min(width, height) * 0.4 * (0.3 + normalizedFreq * 0.7);
+      const phi = Math.acos(-1 + (2 * index) / words.length);
+      const theta = Math.sqrt(words.length * Math.PI) * phi;
+
+      const x = centerOffset + radius * Math.cos(theta) * Math.sin(phi);
+      const y = radius * Math.sin(theta) * Math.sin(phi);
+      const z = radius * Math.cos(phi);
+
+      textMesh.position.set(x, y, z);
+      textMesh.rotation.x = Math.random() * Math.PI * 2;
+      textMesh.rotation.y = Math.random() * Math.PI * 2;
+      textMesh.rotation.z = Math.random() * Math.PI * 2;
+
+      // 添加到场景
+      scene.add(textMesh);
+    });
+
+    // 添加轨道控制器
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.25;
+    controls.enableZoom = true;
+    controls.autoRotate = true;
+    controls.autoRotateSpeed = 0.5;
+
+    // 动画循环
+    function animate() {
+      requestAnimationFrame(animate);
+      controls.update();
+      renderer.render(scene, camera);
     }
 
-    // 点击空白处关闭放大视图
-    overlay.addEventListener("click", function (e) {
-      if (e.target === overlay) {
-        document.body.removeChild(overlay);
-      }
-    });
+    animate();
+
+    // 响应窗口大小变化
+    function onWindowResize() {
+      const newWidth = container.clientWidth;
+      const newHeight = container.clientHeight;
+
+      camera.aspect = newWidth / newHeight;
+      camera.updateProjectionMatrix();
+
+      renderer.setSize(newWidth, newHeight);
+    }
+
+    window.addEventListener("resize", onWindowResize);
+
+    // 清理函数
+    container._3dCleanup = () => {
+      window.removeEventListener("resize", onWindowResize);
+      renderer.dispose();
+      scene.clear();
+    };
   });
 }
 
@@ -910,53 +1131,58 @@ function drawSimpleWordCloud(canvas, words) {
 
   const centerX = canvas.width / 2;
   const centerY = canvas.height / 2;
-  
+
   // 计算频率的最大值和最小值，用于归一化
   let maxFreq = 0;
   let minFreq = Infinity;
-  words.forEach(word => {
+  words.forEach((word) => {
     maxFreq = Math.max(maxFreq, word[1]);
     minFreq = Math.min(minFreq, word[1]);
   });
-  
+
   // 确保分母不为0
   const freqRange = maxFreq - minFreq || 1;
-  
+
   // 创建一个用于存储已放置单词的区域，避免重叠
   const placedWords = [];
-  
+
   words.forEach((word, index) => {
     // 根据频率计算字体大小，高频词更大
     const normalizedFreq = (word[1] - minFreq) / freqRange;
     const fontSize = 12 + normalizedFreq * 40; // 12px到52px的范围
     ctx.font = `${fontSize}px Arial, sans-serif`;
-    
+
     // 计算单词宽度
     const wordWidth = ctx.measureText(word[0]).width;
-    
+
     // 高频词放在中心附近，低频词放在外围
     const ringFactor = 1 - normalizedFreq * 0.7; // 0.3到1的范围
     const attempts = 50; // 最大尝试次数
     let placed = false;
-    
+
     for (let attempt = 0; attempt < attempts && !placed; attempt++) {
       // 基于频率和尝试次数计算位置
       let angle;
       let radius;
-      
+
       if (attempt === 0) {
         // 第一次尝试：理想位置
         angle = (index / words.length) * Math.PI * 2;
         radius = ringFactor * Math.min(centerX, centerY) * 0.8;
       } else {
         // 后续尝试：在理想位置周围随机偏移
-        angle = (index / words.length) * Math.PI * 2 + (Math.random() - 0.5) * 0.5;
-        radius = ringFactor * Math.min(centerX, centerY) * 0.8 * (0.9 + Math.random() * 0.2);
+        angle =
+          (index / words.length) * Math.PI * 2 + (Math.random() - 0.5) * 0.5;
+        radius =
+          ringFactor *
+          Math.min(centerX, centerY) *
+          0.8 *
+          (0.9 + Math.random() * 0.2);
       }
-      
+
       const x = centerX + Math.cos(angle) * radius;
       const y = centerY + Math.sin(angle) * radius;
-      
+
       // 检查是否与已放置的单词重叠
       let overlap = false;
       for (const placedWord of placedWords) {
@@ -964,42 +1190,48 @@ function drawSimpleWordCloud(canvas, words) {
         const dy = y - placedWord.y;
         const distance = Math.sqrt(dx * dx + dy * dy);
         const minDistance = (wordWidth + placedWord.width) / 2 + 10;
-        
+
         if (distance < minDistance) {
           overlap = true;
           break;
         }
       }
-      
-      if (!overlap && x > wordWidth/2 && x < canvas.width - wordWidth/2 && y > fontSize/2 && y < canvas.height - fontSize/2) {
+
+      if (
+        !overlap &&
+        x > wordWidth / 2 &&
+        x < canvas.width - wordWidth / 2 &&
+        y > fontSize / 2 &&
+        y < canvas.height - fontSize / 2
+      ) {
         // 根据频率设置颜色，高频词更鲜艳
         const saturation = 60 + normalizedFreq * 30; // 60%到90%的饱和度
         const lightness = 40 + normalizedFreq * 20; // 40%到60%的亮度
         const hue = (word[1] * 137.5) % 360; // 使用黄金角度分散颜色
         ctx.fillStyle = `hsl(${hue}, ${saturation}%, ${lightness}%)`;
-        
+
         // 随机轻微旋转
         const rotation = (Math.random() - 0.5) * 0.5; // -0.25到0.25弧度
-        
+
         ctx.save();
         ctx.translate(x, y);
         ctx.rotate(rotation);
         ctx.fillText(word[0], 0, 0);
         ctx.restore();
-        
+
         // 记录已放置的单词
         placedWords.push({ x, y, width: wordWidth });
         placed = true;
       }
     }
-    
+
     // 如果尝试多次仍无法放置，则使用简单方式放置到边缘
     if (!placed) {
       const angle = (index / words.length) * Math.PI * 2;
       const radius = Math.min(centerX, centerY) * 0.9;
       const x = centerX + Math.cos(angle) * radius;
       const y = centerY + Math.sin(angle) * radius;
-      
+
       ctx.fillStyle = `hsl(${(word[1] * 137.5) % 360}, 70%, 50%)`;
       ctx.fillText(word[0], x, y);
     }
@@ -1059,9 +1291,10 @@ function generateSentimentChart(classifiedDanmu) {
       chart.radius("70%");
       chart.palette(["#4CAF50", "#F44336", "#9E9E9E"]);
       chart.legend().position("bottom");
-      chart.legend().itemsFormat(function() {
+      chart.legend().itemsFormat(function () {
         const total = positiveCount + negativeCount + neutralCount;
-        const percentage = total > 0 ? Math.round((this.value / total) * 100) : 0;
+        const percentage =
+          total > 0 ? Math.round((this.value / total) * 100) : 0;
         return this.name + ": " + percentage + "%";
       });
       chart.credits().enabled(false);

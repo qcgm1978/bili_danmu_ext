@@ -33,7 +33,7 @@
   "content_scripts": [
     {
       "matches": ["https://www.bilibili.com/video/*"],
-      "js": ["content.js", "lib/anychart-base.min.js", "lib/anychart-ui.min.js", "lib/anychart-exports.min.js"],
+      "js": ["content.js", "lib/anychart-base.min.js", "lib/anychart-ui.min.js", "lib/anychart-exports.min.js", "lib/d3.min.js", "lib/three.min.js", "lib/OrbitControls.js","lib/opentype.js","lib/TTFLoader.js"],
       "css": ["styles.css"]
     }
   ],
@@ -44,7 +44,7 @@
   },
   "web_accessible_resources": [
       {
-        "resources": ["popup.html", "lib/chart.umd.min.js", "lib/wordcloud.min.js", "chart_page.html", "chart_script.js", "lib/anychart-base.min.js", "lib/anychart-ui.min.js", "lib/anychart-exports.min.js", "styles.css", "config.js"],
+        "resources": ["popup.html", "lib/chart.umd.min.js", "lib/wordcloud.min.js", "chart_page.html", "chart_script.js", "lib/anychart-base.min.js", "lib/anychart-ui.min.js", "lib/anychart-exports.min.js", "styles.css", "config.js", "lib/d3.min.js", "lib/three.min.js", "lib/OrbitControls.js"],
         "matches": ["https://www.bilibili.com/*"]
       }
     ]
