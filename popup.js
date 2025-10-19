@@ -1,5 +1,4 @@
 // 初始化设置
-import { getText, setLanguage } from './lang.js';
 
 document.addEventListener('DOMContentLoaded', () => {
   // 获取保存的设置

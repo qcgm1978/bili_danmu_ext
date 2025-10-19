@@ -1,45 +1,11 @@
+// 语言函数从lang.js全局引入
+
 function getLanguage() {
   return new Promise((resolve) => {
     chrome.storage.local.get(["language"], (result) => {
       resolve(result.language || "zh-CN");
     });
   });
-}
-
-// 获取对应语言的文本
-function getText(key, language) {
-  // 直接使用语言键值对，避免导入冲突
-  const texts = {
-    "zh-CN": {
-      analysisPanelTitle: "弹幕分析",
-      wordCloud: "单词云",
-      sentimentAnalysis: "情绪分析",
-      statistics: "统计数据",
-      totalDanmu: "总弹幕数",
-      positiveDanmu: "正面弹幕",
-      negativeDanmu: "负面弹幕",
-      neutralDanmu: "中性弹幕",
-      positive: "正面",
-      negative: "负面",
-      neutral: "中性",
-      downloadLatestVersion: "下载最新版本",
-    },
-    "en-US": {
-      analysisPanelTitle: "Danmu Analysis",
-      wordCloud: "Word Cloud",
-      sentimentAnalysis: "Sentiment Analysis",
-      statistics: "Statistics",
-      totalDanmu: "Total Danmu",
-      positiveDanmu: "Positive Danmu",
-      negativeDanmu: "Negative Danmu",
-      neutralDanmu: "Neutral Danmu",
-      positive: "Positive",
-      negative: "Negative",
-      neutral: "Neutral",
-      downloadLatestVersion: "Download Latest Version",
-    },
-  };
-  return texts[language]?.[key] || texts["zh-CN"][key] || key;
 }
 
 function loadScript(url, callback) {
@@ -226,11 +192,15 @@ function tokenizeWithLLM(danmuList, callback) {
 
     // 准备请求参数
     const provider = result.llmProvider || "groq";
-    const prompt = `请对以下B站弹幕进行分词，只返回分词结果，不要包含任何其他解释或说明。每行一条弹幕，分词结果用空格分隔。\n\n${danmuList
+    const prompt = `请对以下文本进行分词，只返回分词结果，不要包含任何其他解释或说明。每行一条文本，分词结果用空格分隔。
+
+${danmuList
       .slice(0, 100)
       .join(
         "\n"
-      )}\n\n请按每条弹幕一行，格式为：弹幕内容 -> 分词结果（空格分隔）`;
+      )}
+
+请按每条文本一行，格式为：文本内容 -> 分词结果（空格分隔）`;
 
     let apiUrl, headers, body;
 
@@ -385,9 +355,13 @@ function analyzeDanmuWithLLM(danmuList, callback) {
 
     // 准备请求参数
     const provider = result.llmProvider || "groq";
-    const prompt = `分析以下B站弹幕的情绪倾向。每条弹幕只能标记为正面、负面或中性。\n\n${danmuList.join(
+    const prompt = `分析以下文本的情绪倾向。每条文本只能标记为正面、负面或中性。
+
+${danmuList.join(
       "\n"
-    )}\n\n请按每条弹幕一行，格式为：弹幕内容 -> 情绪（正面/负面/中性）`;
+    )}
+
+请按每条文本一行，格式为：文本内容 -> 情绪（正面/负面/中性）`;
 
     let apiUrl, headers, body;
 
@@ -694,6 +668,110 @@ function fetchDanmuFromAPI() {
                   generateSentimentChart(weightedClassifiedDanmu);
                 });
               });
+            } else {
+              // 没有获取到弹幕数据，尝试获取评论数据
+              fetchCommentsFromAPI(videoId);
+            }
+          });
+      }
+    });
+}
+
+// 从B站API获取评论数据
+function fetchCommentsFromAPI(videoId) {
+  const isBvId = videoId.startsWith("BV");
+  const aidUrl = isBvId
+    ? `https://api.bilibili.com/x/web-interface/view?bvid=${videoId}`
+    : `https://api.bilibili.com/x/web-interface/view?aid=${videoId.replace("av", "")}`;
+
+  // 先获取视频的aid
+  fetch(aidUrl)
+    .then((response) => response.json())
+    .then((data) => {
+      if (data.code === 0 && data.data && data.data.aid) {
+        const aid = data.data.aid;
+        // 使用aid获取评论
+        const commentUrl = `https://api.bilibili.com/x/v2/reply?type=1&sort=2&oid=${aid}&pn=1&ps=20`;
+
+        fetch(commentUrl)
+          .then((response) => response.json())
+          .then((commentData) => {
+            if (commentData.code === 0 && commentData.data && commentData.data.replies) {
+              const replies = commentData.data.replies;
+              
+              // 提取评论内容
+              const commentList = [];
+              const commentFrequency = new Map();
+              
+              replies.forEach((reply) => {
+                const content = reply.content.message.trim();
+                if (content && content.length > 0) {
+                  commentList.push(content);
+                  
+                  // 更新评论频率统计
+                  if (commentFrequency.has(content)) {
+                    commentFrequency.set(content, commentFrequency.get(content) + 1);
+                  } else {
+                    commentFrequency.set(content, 1);
+                  }
+                }
+              });
+              
+              const uniqueCommentList = Array.from(commentFrequency.keys());
+              
+              if (uniqueCommentList.length > 0) {
+                // 使用LLM进行分析，失败时自动回退到传统方法
+                analyzeDanmuWithLLM(uniqueCommentList, (classifiedComments) => {
+                  // 修改classifiedComments对象，添加原始评论总数、频率信息和数据类型标志
+                  classifiedComments.originalCount = commentList.length;
+                  classifiedComments.danmuFrequency = commentFrequency;
+                  classifiedComments.isComment = true;
+
+                  // 根据评论频率调整情绪分析结果
+                  const weightedClassifiedComments = {
+                    allDanmu: classifiedComments.allDanmu,
+                    originalCount: classifiedComments.originalCount,
+                    danmuFrequency: classifiedComments.danmuFrequency,
+                    isComment: true,
+                    positiveDanmu: [],
+                    negativeDanmu: [],
+                    neutralDanmu: [],
+                  };
+
+                  // 根据评论频率重新计算情绪分类
+                  classifiedComments.positiveDanmu.forEach((comment) => {
+                    const frequency = commentFrequency.get(comment);
+                    for (let i = 0; i < frequency; i++) {
+                      weightedClassifiedComments.positiveDanmu.push(comment);
+                    }
+                  });
+
+                  classifiedComments.negativeDanmu.forEach((comment) => {
+                    const frequency = commentFrequency.get(comment);
+                    for (let i = 0; i < frequency; i++) {
+                      weightedClassifiedComments.negativeDanmu.push(comment);
+                    }
+                  });
+
+                  classifiedComments.neutralDanmu.forEach((comment) => {
+                    const frequency = commentFrequency.get(comment);
+                    for (let i = 0; i < frequency; i++) {
+                      weightedClassifiedComments.neutralDanmu.push(comment);
+                    }
+                  });
+
+                  // 先使用LLM进行分词，再生成单词云
+                  tokenizeWithLLM(uniqueCommentList, (tokenizedResult) => {
+                    updateStats(weightedClassifiedComments);
+                    generateWordCloud(
+                      classifiedComments.allDanmu,
+                      commentFrequency,
+                      tokenizedResult
+                    );
+                    generateSentimentChart(weightedClassifiedComments);
+                  });
+                });
+              }
             }
           });
       }
@@ -701,20 +779,48 @@ function fetchDanmuFromAPI() {
 }
 
 // 更新统计数据
-function updateStats(classifiedDanmu) {
+function updateStats(classifiedData) {
   if (!analysisPanel) return;
 
-  // 使用原始弹幕总数（包含重复）
-  const totalDanmu =
-    classifiedDanmu.originalCount || classifiedDanmu.allDanmu.length;
-  const positiveDanmu = classifiedDanmu.positiveDanmu.length;
-  const negativeDanmu = classifiedDanmu.negativeDanmu.length;
-  const neutralDanmu = classifiedDanmu.neutralDanmu.length;
+  // 获取当前语言
+  const language = analysisPanel.getAttribute("data-language") || "zh-CN";
+  
+  // 判断数据类型（弹幕或评论）
+  const isComment = classifiedData.isComment || false;
+  
+  // 使用原始数据总数（包含重复）
+  const totalCount = classifiedData.originalCount || classifiedData.allDanmu.length;
+  const positiveCount = classifiedData.positiveDanmu.length;
+  const negativeCount = classifiedData.negativeDanmu.length;
+  const neutralCount = classifiedData.neutralDanmu.length;
 
-  document.getElementById("total-danmu").textContent = totalDanmu;
-  document.getElementById("positive-danmu").textContent = positiveDanmu;
-  document.getElementById("negative-danmu").textContent = negativeDanmu;
-  document.getElementById("neutral-danmu").textContent = neutralDanmu;
+  // 更新统计数据
+  document.getElementById("total-danmu").textContent = totalCount;
+  document.getElementById("positive-danmu").textContent = positiveCount;
+  document.getElementById("negative-danmu").textContent = negativeCount;
+  document.getElementById("neutral-danmu").textContent = neutralCount;
+  
+  // 更新标签文本
+  const totalLabelKey = isComment ? "totalComment" : "totalDanmu";
+  const positiveLabelKey = isComment ? "positiveComment" : "positiveDanmu";
+  const negativeLabelKey = isComment ? "negativeComment" : "negativeDanmu";
+  const neutralLabelKey = isComment ? "neutralComment" : "neutralDanmu";
+  
+  const totalLabel = analysisPanel.querySelector("#stats-content .stat-item:nth-child(1) .stat-label");
+  const positiveLabel = analysisPanel.querySelector("#stats-content .stat-item:nth-child(2) .stat-label");
+  const negativeLabel = analysisPanel.querySelector("#stats-content .stat-item:nth-child(3) .stat-label");
+  const neutralLabel = analysisPanel.querySelector("#stats-content .stat-item:nth-child(4) .stat-label");
+  
+  if (totalLabel) totalLabel.textContent = getText(totalLabelKey, language);
+  if (positiveLabel) positiveLabel.textContent = getText(positiveLabelKey, language);
+  if (negativeLabel) negativeLabel.textContent = getText(negativeLabelKey, language);
+  if (neutralLabel) neutralLabel.textContent = getText(neutralLabelKey, language);
+  
+  // 更新分析面板标题
+  const panelTitle = analysisPanel.querySelector(".analysis-header h3");
+  if (panelTitle) {
+    panelTitle.textContent = isComment ? "评论分析" : "弹幕分析";
+  }
 }
 
 // 生成单词云

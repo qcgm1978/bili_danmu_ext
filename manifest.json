@@ -33,7 +33,7 @@
   "content_scripts": [
     {
       "matches": ["https://www.bilibili.com/video/*"],
-      "js": ["content.js", "lib/anychart-base.min.js", "lib/anychart-ui.min.js", "lib/anychart-exports.min.js", "lib/d3.min.js", "lib/three.min.js", "lib/OrbitControls.js","lib/opentype.js","lib/TTFLoader.js"],
+      "js": ["lang.js", "content.js", "lib/anychart-base.min.js", "lib/anychart-ui.min.js", "lib/anychart-exports.min.js", "lib/d3.min.js", "lib/three.min.js", "lib/OrbitControls.js","lib/opentype.js","lib/TTFLoader.js"],
       "css": ["styles.css"]
     }
   ],

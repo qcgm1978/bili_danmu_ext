@@ -18,6 +18,18 @@ const i18n = {
     'positiveDanmu': '正面弹幕',
     'negativeDanmu': '负面弹幕',
     'neutralDanmu': '中性弹幕',
+    'totalComment': '总评论数',
+    'positiveComment': '正面评论',
+    'negativeComment': '负面评论',
+    'neutralComment': '中性评论',
+    'positive': '正面',
+    'negative': '负面',
+    'neutral': '中性',
+    'analysisPanelTitle': '弹幕分析',
+    'wordCloud': '单词云',
+    'sentimentAnalysis': '情绪分析',
+    'statistics': '统计数据',
+    'downloadLatestVersion': '下载最新版本',
     'usageInstructions': '使用说明：',
     'instructionStep1': '1. 打开哔哩哔哩视频页面',
     'instructionStep2': '2. 点击此扩展图标',
@@ -49,6 +61,18 @@ const i18n = {
     'positiveDanmu': 'Positive Comments',
     'negativeDanmu': 'Negative Comments',
     'neutralDanmu': 'Neutral Comments',
+    'totalComment': 'Total Comments',
+    'positiveComment': 'Positive Comments',
+    'negativeComment': 'Negative Comments',
+    'neutralComment': 'Neutral Comments',
+    'positive': 'Positive',
+    'negative': 'Negative',
+    'neutral': 'Neutral',
+    'analysisPanelTitle': 'Danmu Analysis',
+    'wordCloud': 'Word Cloud',
+    'sentimentAnalysis': 'Sentiment Analysis',
+    'statistics': 'Statistics',
+    'downloadLatestVersion': 'Download Latest Version',
     'usageInstructions': 'Instructions:',
     'instructionStep1': '1. Open Bilibili video page',
     'instructionStep2': '2. Click this extension icon',
@@ -64,12 +88,12 @@ const i18n = {
   }
 };
 
-// 导出函数
-export function getText(key, lang = 'zh-CN') {
+// 全局函数
+var getText = function(key, lang = 'zh-CN') {
   return i18n[lang] && i18n[lang][key] ? i18n[lang][key] : i18n['zh-CN'][key];
-}
+};
 
-export function setLanguage(domElement, lang = 'zh-CN') {
+var setLanguage = function(domElement, lang = 'zh-CN') {
   // 设置页面标题
   if (document.querySelector('title')) {
     document.querySelector('title').textContent = getText('extensionName', lang);
@@ -80,4 +104,4 @@ export function setLanguage(domElement, lang = 'zh-CN') {
     const key = el.getAttribute('data-i18n');
     el.textContent = getText(key, lang);
   });
-}
+};
